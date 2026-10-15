@@ -8,6 +8,7 @@ import pytest
 
 from modules.acceso import Alumno
 from modules.panel import PanelDatos, cargar_panel
+from modules.reports import FILAS_ENCABEZADO as OFF
 from modules.reports_admin import excel_concentrado, nombre_pdf, zip_pdfs
 from test_panel import AHORA, TEST1, TEST2, poblar
 
@@ -29,7 +30,7 @@ def test_hojas_del_concentrado(panel):
 
 def test_resumen_cuenta_alumnos_y_primeras_opciones(panel):
     ws = _libro(panel)["Resumen"]
-    valores = {f[0].value: f[1].value for f in ws.iter_rows(min_row=4, max_row=6)}
+    valores = {f[0].value: f[1].value for f in ws.iter_rows(min_row=OFF + 4, max_row=OFF + 6)}
     assert valores == {"Alumnos registrados": 4, "Terminaron todos los tests": 1, "En curso": 3}
     textos = [c.value for f in ws.iter_rows() for c in f if isinstance(c.value, str)]
     assert any("anterior" in t for t in textos)  # aviso de la versión vieja
@@ -131,3 +132,12 @@ def test_panel_y_calificacion_ignoran_tests_retirados():
     repo.respuestas[("a1", "test_retirado")] = {"R01": 3}
     panel = cargar_panel(repo, (TEST1, TEST2))
     assert panel.filas[0].completo and "test_retirado" in panel.respuestas
+
+
+def test_el_concentrado_lleva_logos_solo_en_la_portada(panel):
+    wb = _libro(panel)
+    assert len(wb["Resumen"]._images) == 2
+    for nombre in ("Alumnos", "Test 1", "Test 2", "Respuestas"):
+        assert len(wb[nombre]._images) == 0                      # las hojas de datos empiezan en la fila 1
+        assert wb[nombre].cell(1, 1).value in ("Matrícula",)     # encabezado en la fila 1: filtros y tablas dinámicas
+    assert wb["Resumen"].cell(OFF + 1, 1).value == "Evaluación Diagnóstica FCA - Concentrado"

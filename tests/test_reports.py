@@ -11,7 +11,8 @@ import pytest
 
 from fakes import alumno
 from modules.config_loader import load_all_tests
-from modules.reports import (excel_individual, grafica_radar, pct, pdf_individual, vista_conjunta)
+from modules.reports import (FILAS_ENCABEZADO as OFF, excel_individual, grafica_radar, pct, pdf_individual,
+                             vista_conjunta)
 from modules.scoring import calificar
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -89,23 +90,23 @@ def test_pdf_con_un_test_sin_principal_no_falla():
 def test_excel_hojas_y_valores(resultados):
     wb = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST1, TEST2], resultados, FECHA)))
     assert wb.sheetnames == ["Resumen", "Test 1", "Test 2"]
-    resumen = {fila[0].value: fila[1].value for fila in wb["Resumen"].iter_rows(min_row=3, max_row=7)}
+    resumen = {fila[0].value: fila[1].value for fila in wb["Resumen"].iter_rows(min_row=OFF + 3, max_row=OFF + 7)}
     assert resumen["Matrícula"] == "123456" and resumen["Alumno"] == "Ana Pérez López"
     h1 = wb["Test 1"]
-    filas = {f[0].value: f for f in h1.iter_rows(min_row=4, max_row=8)}
+    filas = {f[0].value: f for f in h1.iter_rows(min_row=OFF + 4, max_row=OFF + 8)}
     r1 = resultados[0]
     for e in r1.especialidades:
         fila = filas[e.nombre]
         assert fila[1].value == e.obtenido and fila[2].value == e.maximo
         assert fila[3].value == pytest.approx(float(e.porcentaje)) and fila[3].number_format == "0.0%"
-    assert wb["Test 2"].cell(1, 1).value == TEST2.titulo
+    assert wb["Test 2"].cell(OFF + 1, 1).value == TEST2.titulo
 
 
 def test_excel_no_deja_pasar_formulas_del_alumno(resultados):
     from dataclasses import replace
     malo = replace(alumno(), nombres="=HYPERLINK(\"http://x\")", tutor="@cmd")
     wb = openpyxl.load_workbook(io.BytesIO(excel_individual(malo, [TEST1, TEST2], resultados, FECHA)))
-    celdas = [c.value for fila in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in fila if isinstance(c.value, str)]
+    celdas = [c.value for fila in wb["Resumen"].iter_rows(min_row=OFF + 3, max_row=OFF + 7) for c in fila if isinstance(c.value, str)]
     assert not any(v.startswith(("=", "@")) for v in celdas)
     assert any(v.startswith("'=") for v in celdas) and any(v == "'@cmd" for v in celdas)
 
@@ -131,7 +132,7 @@ def test_pantalla_pdf_y_excel_muestran_el_mismo_porcentaje():
     mkt = r.especialidades[0]
     assert mkt.porcentaje == Fraction(9, 16)
     ws = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST2], [r], FECHA)))["Test 1"]
-    celda = next(f[3] for f in ws.iter_rows(min_row=4, max_row=8) if f[0].value == mkt.nombre)
+    celda = next(f[3] for f in ws.iter_rows(min_row=OFF + 4, max_row=OFF + 8) if f[0].value == mkt.nombre)
     assert celda.value == 0.5625 and celda.number_format == "0.0%"  # Excel lo muestra 56.3 %
     assert pct(mkt.porcentaje) == "56.3 %"
 
@@ -181,7 +182,7 @@ def test_excel_tolera_caracteres_de_control_aunque_la_validacion_falle(resultado
     from dataclasses import replace
     malo = replace(alumno(), nombres="Ana\x01\x08Mar\x1bía", tutor="Mtro.\x07 Ruiz")
     wb = openpyxl.load_workbook(io.BytesIO(excel_individual(malo, [TEST1, TEST2], resultados, FECHA)))
-    valores = [c.value for f in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in f]
+    valores = [c.value for f in wb["Resumen"].iter_rows(min_row=OFF + 3, max_row=OFF + 7) for c in f]
     assert "AnaMaría Pérez López" in valores and "Mtro. Ruiz" in valores
 
 
@@ -190,7 +191,7 @@ def test_excel_individual_con_no_caracteres_sigue_siendo_valido(resultados):
     malo = replace(alumno(), nombres="Ana\ufffe\uffff", tutor="Mtro.\ufffe Ruiz")
     xlsx = excel_individual(malo, [TEST1, TEST2], resultados, FECHA)
     wb = openpyxl.load_workbook(io.BytesIO(xlsx))  # antes: ParseError por XML mal formado
-    valores = [c.value for f in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in f]
+    valores = [c.value for f in wb["Resumen"].iter_rows(min_row=OFF + 3, max_row=OFF + 7) for c in f]
     assert "Ana Pérez López" in valores and "Mtro. Ruiz" in valores
 
 
@@ -205,3 +206,25 @@ def test_el_pdf_lleva_un_logo_a_cada_lado_del_titulo(resultados, tmp_path):
     imagenes = [(f[3], f[4]) for f in filas if f[2] == "image"]
     assert imagenes == [("165", "240"), ("204", "240")]  # FCA a la izquierda, UABJO a la derecha
     assert sum(f[2] == "smask" for f in filas) == 2  # el fondo transparente se conserva
+
+
+def test_el_excel_individual_lleva_los_logos_a_cada_lado_en_todas_las_hojas(resultados):
+    wb = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST1, TEST2], resultados, FECHA)))
+    for ws in wb.worksheets:
+        assert len(ws._images) == 2, ws.title
+        izq, der = sorted(ws._images, key=lambda i: (i.anchor._from.col, i.anchor._from.colOff))
+        assert izq.anchor._from.col == 0 and izq.anchor._from.row == 0           # FCA arriba a la izquierda
+        assert der.anchor._from.col == (3 if ws.title == "Resumen" else 6)       # UABJO en la última columna usada
+        px = lambda i: (round(i.anchor.ext.width / 9525), round(i.anchor.ext.height / 9525))  # noqa: E731
+        assert px(izq) == (45, 66) and px(der)[1] == 66                          # misma altura, proporción conservada
+        assert ws.cell(OFF + 1, 1).value  # el contenido bajó para no quedar debajo de los logos
+        assert all(ws.cell(r, c).value is None for r in range(1, OFF + 1) for c in range(1, 8))  # banda libre
+        assert ws.page_setup.orientation == "landscape" and ws.sheet_properties.pageSetUpPr.fitToPage
+
+
+def test_el_excel_conserva_las_celdas_combinadas_y_alturas_tras_mover_el_contenido(resultados):
+    ws = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST1, TEST2], resultados, FECHA)))["Resumen"]
+    unidas = [str(r) for r in ws.merged_cells.ranges]
+    assert unidas == [f"A{9 + OFF}:D{9 + OFF}"]          # el aviso sigue combinado (A9:D9 antes del cambio)
+    assert ws.row_dimensions[9 + OFF].height == 48 and ws.row_dimensions[9].height is None
+    assert ws.cell(9 + OFF, 1).value.startswith("Estos resultados son una guía")

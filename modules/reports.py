@@ -297,6 +297,62 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
 
 # --------------------------------------------------------------------------- Excel
 
+FILAS_ENCABEZADO = 5  # filas que quedan arriba, libres, para los logos
+_ALTO_LOGO_PX = 66
+
+
+def con_logos(ws, col_derecha: int) -> None:
+    """Reserva FILAS_ENCABEZADO filas arriba (mueve el contenido hacia abajo) y pone el logo de la FCA a
+    la izquierda y el de la UABJO alineado al borde derecho de la columna `col_derecha` (1 = A).
+    Llamar al final, con los anchos de columna ya definidos."""
+    from openpyxl.drawing.image import Image as XLImage
+    from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
+    from openpyxl.drawing.xdr import XDRPositiveSize2D
+    from openpyxl.styles import Border, Side
+    from openpyxl.worksheet.properties import PageSetupProperties
+    from openpyxl.utils import get_column_letter
+    from openpyxl.utils.units import pixels_to_EMU
+
+    unidos = [r.coord for r in ws.merged_cells.ranges]
+    alturas = {i: d.height for i, d in ws.row_dimensions.items() if d.height}
+    for coord in unidos:
+        ws.unmerge_cells(coord)
+    if ws.max_row > 1 or ws.cell(1, 1).value is not None:
+        ws.move_range(ws.dimensions, rows=FILAS_ENCABEZADO)
+    for coord in unidos:
+        from openpyxl.worksheet.cell_range import CellRange
+        r = CellRange(coord)
+        r.shift(row_shift=FILAS_ENCABEZADO)
+        ws.merge_cells(r.coord)
+    for i in alturas:
+        ws.row_dimensions[i].height = None
+    for i, h in alturas.items():
+        ws.row_dimensions[i + FILAS_ENCABEZADO].height = h
+    for i in range(1, FILAS_ENCABEZADO):
+        ws.row_dimensions[i].height = 14  # 4 filas x 14 pt: caben los logos
+    ws.row_dimensions[FILAS_ENCABEZADO].height = 8
+    linea = Border(bottom=Side(style="medium", color="E5B300"))
+    for c in range(1, col_derecha + 1):
+        ws.cell(FILAS_ENCABEZADO - 1, c).border = linea
+
+    def poner(ruta: Path, col: int, derecha: bool) -> None:
+        if not ruta.is_file():
+            return
+        img = XLImage(str(ruta))
+        img.width, img.height = round(img.width * _ALTO_LOGO_PX / img.height), _ALTO_LOGO_PX
+        ancho_col = int((ws.column_dimensions[get_column_letter(col)].width or 13) * 7 + 5)
+        desplazo = max(0, ancho_col - img.width - 4) if derecha else 4
+        ancla = AnchorMarker(col=col - 1, colOff=pixels_to_EMU(desplazo), row=0, rowOff=pixels_to_EMU(4))
+        img.anchor = OneCellAnchor(_from=ancla, ext=XDRPositiveSize2D(pixels_to_EMU(img.width), pixels_to_EMU(img.height)))
+        ws.add_image(img)
+
+    poner(LOGOS[0], 1, derecha=False)
+    poner(LOGOS[1], col_derecha, derecha=True)
+    # Al imprimir o exportar a PDF, que quepa a lo ancho de una página (si no, el logo derecho cae en otra).
+    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+    ws.page_setup.fitToWidth, ws.page_setup.fitToHeight = 1, 0
+    ws.page_setup.orientation = "landscape"
+
 def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence[ResultadoTest],
                      fecha: datetime) -> bytes:
     from openpyxl import Workbook
@@ -391,7 +447,9 @@ def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Se
 
     for hoja in wb.worksheets:
         for col in range(1, 8):
-            hoja.column_dimensions[get_column_letter(col)].width = 34 if col == 1 else 18
+            hoja.column_dimensions[get_column_letter(col)].width = 34 if col == 1 else 26
+    for hoja in wb.worksheets:
+        con_logos(hoja, 4 if hoja.title == "Resumen" else 7)
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()

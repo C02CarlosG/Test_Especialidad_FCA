@@ -13,7 +13,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from modules.panel import FilaAlumno, PanelDatos
-from modules.reports import AVISO, _nombre_de, _seguro, pct, pdf_individual
+from modules.reports import AVISO, _nombre_de, _seguro, con_logos, pct, pdf_individual
 from modules.scoring import ResultadoTest
 
 ZONA = ZoneInfo("America/Mexico_City")
@@ -177,6 +177,9 @@ def excel_concentrado(panel: PanelDatos, fecha: datetime) -> bytes:
     for hoja in wb.worksheets:
         for col in range(1, hoja.max_column + 1):
             hoja.column_dimensions[get_column_letter(col)].width = 30 if col == 1 and hoja.title in ("Resumen",) else 18
+    # Los logos van solo en la portada (Resumen): las hojas de datos conservan su encabezado en la fila 1
+    # para poder filtrar y hacer tablas dinámicas.
+    con_logos(wb["Resumen"], 4)
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
