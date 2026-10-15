@@ -196,8 +196,8 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         if png:
             historia += [Spacer(1, 6), Image(io.BytesIO(png), width=12.5 * cm, height=10.5 * cm)]
 
-    for n, (t, r) in enumerate(zip(tests, resultados), start=1):
-        historia.append(p(f"Test {n}: {t.titulo}", h2))
+    for t, r in zip(tests, resultados):
+        historia.append(p(t.titulo, h2))
         filas = [["Área", "Puntaje", "Porcentaje", "Nivel"]]
         for e in r.especialidades:
             filas.append([e.nombre, "—" if e.sin_datos else f"{e.obtenido} de {e.maximo}", pct(e.porcentaje),

@@ -55,7 +55,7 @@ def test_registro_lleva_al_primer_bloque_del_primer_test():
     at = _llenar(_nuevo())
     assert not at.exception and not at.error
     assert len(at.radio) == 10  # bloque 1 de 12 preguntas = 10 preguntas
-    assert "Test 1 de 2" in at.caption[0].value
+    assert at.subheader[0].value == "Test Uno"
     assert [m.value for m in at.markdown if m.value.startswith("**1. ")] == ["**1. p1**"]
 
 
@@ -95,7 +95,7 @@ def test_flujo_completo_hasta_la_pantalla_final():
     assert not at.error and len(at.radio) == 2              # t1 bloque 2: 2 preguntas
     assert "Terminar este test" == at.button[0].label
     _contestar_todo(at, "1").button[0].click().run()          # termina t1
-    assert "Test 2 de 2" in at.caption[0].value and len(at.radio) == 10
+    assert at.subheader[0].value == "Test Dos" and len(at.radio) == 10
     assert at.radio[0].options[-1] == "Sin experiencia"      # opción SE al final de la escala
     _contestar_todo(at, "SE").button[0].click().run()          # todo "SE"; termina t2
     assert not at.radio and "Terminaste" in at.success[0].value

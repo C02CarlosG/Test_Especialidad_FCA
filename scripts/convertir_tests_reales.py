@@ -73,7 +73,7 @@ def test_1() -> None:
                ("afinidad", 0, "Desarrollo Requerido")]
     # Se omite la frase de la calculadora que habla de la "columna Respuesta" de Excel.
     instrucciones = ws["A5"].value.split(" Selecciona")[0].strip()
-    escribir(DESTINO / "1_test_big_five.xlsx", "Big Five (OCEAN)", instrucciones, esp, preguntas, escala,
+    escribir(DESTINO / "1_test_big_five.xlsx", "Test 1: The Big Five", instrucciones, esp, preguntas, escala,
              niveles, afinidades)
 
 
@@ -96,7 +96,7 @@ def test_2() -> None:
                ("categoria", 0, "BAJO (Baja Afinidad)")]
     instrucciones = ws["A10"].value.split("\n")[0].strip()
     escribir(DESTINO / "2_test_orientacion_especialidades.xlsx",
-             "Orientación para especialidades en Administración", instrucciones, esp, preguntas, escala,
+             "Test 2: Administration Specialties", instrucciones, esp, preguntas, escala,
              niveles)
 
 

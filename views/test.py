@@ -50,7 +50,7 @@ def _opciones(test: TestConfig) -> tuple[list, dict]:
 def _encabezado(pos: Posicion) -> None:
     test = pos.test
     st.title("Evaluación Diagnóstica FCA")
-    st.caption(f"Test {pos.numero_test} de {pos.total_tests} · {test.titulo}")
+    st.subheader(test.titulo)
     st.progress(pos.contestadas / len(test.preguntas),
                 text=f"Bloque {pos.numero_bloque} de {pos.total_bloques} · "
                      f"{pos.contestadas} de {len(test.preguntas)} preguntas contestadas")
@@ -67,7 +67,7 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
                         archivos: dict) -> None:
     st.subheader("Tus resultados")
     st.caption(AVISO)
-    st.table({"Test": [f"{i}. {t.titulo}" for i, t in enumerate(tests, start=1)],
+    st.table({"Test": [t.titulo for t in tests],
               "1ª opción": [_nombre(r, r.principal) for r in resultados],
               "2ª opción": [_nombre(r, r.secundaria) for r in resultados]})
     vc = vista_conjunta(resultados)

@@ -68,8 +68,8 @@ def test_pdf_es_valido_y_contiene_los_datos(resultados):
     if not shutil.which("pdftotext"):
         pytest.skip("pdftotext no está instalado: solo se validó la estructura del PDF")
     texto = subprocess.run(["pdftotext", "-layout", "-", "-"], input=pdf, capture_output=True, check=True).stdout.decode()
-    for esperado in ("123456", "Ana Pérez López", "Big Five (OCEAN)", "Vista conjunta", "15/10/2026",
-                     "no son un diagnóstico", "Test 2: Orientación para especialidades"):
+    for esperado in ("123456", "Ana Pérez López", "Test 1: The Big Five", "Vista conjunta", "15/10/2026",
+                     "no son un diagnóstico", "Test 2: Administration Specialties"):
         assert esperado in texto
     for e in resultados[0].especialidades:
         assert e.nombre in texto
