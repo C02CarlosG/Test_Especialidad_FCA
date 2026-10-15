@@ -35,6 +35,7 @@ def _errores(ruta) -> str:
 def test_test_1_real_big_five():
     cfg = load_test_config(CARPETA / "1_test_big_five.xlsx")
     assert cfg.titulo == "Big Five (OCEAN)"
+    assert cfg.instrucciones.startswith("Evalúa cada afirmación") and "columna" not in cfg.instrucciones
     assert len(cfg.especialidades) == 5 and len(cfg.preguntas) == 25
     assert (cfg.valor_min, cfg.valor_max) == (1, 5)
     assert cfg.bloques == [1, 2, 3]
@@ -48,6 +49,7 @@ def test_test_2_real_orientacion():
     assert (cfg.valor_min, cfg.valor_max) == (0, 4)
     assert {p.especialidad_codigo for p in cfg.preguntas} == {"MKT", "CH", "AF", "NI", "EMP"}
     assert cfg.sin_experiencia == "Sin Experiencia Previa"
+    assert cfg.instrucciones.startswith("Indica el nivel de apoyo") and "columna" not in cfg.instrucciones
     assert [o.valor for o in cfg.escala] == [0, 1, 2, 3, 4]  # SE no es parte de la escala numérica
 
 

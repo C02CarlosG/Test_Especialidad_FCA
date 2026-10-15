@@ -12,6 +12,7 @@ from postgrest.exceptions import APIError
 from supabase import Client, create_client
 
 from modules.acceso import Alumno, MatriculaDuplicada
+from modules.avance import ProgresoTest
 
 
 class DBConfigError(Exception):
@@ -79,3 +80,36 @@ class SupabaseRepo:
                 raise MatriculaDuplicada() from exc
             raise
         return _alumno(r.data[0])
+
+    # --- avance en los tests (modules.avance.RepositorioAvance) ---
+
+    def obtener_progreso(self, alumno_id: str) -> dict[str, ProgresoTest]:
+        r = (self._c.table("progreso_tests").select("test_id,estado,version_test")
+             .eq("alumno_id", alumno_id).execute())
+        return {f["test_id"]: ProgresoTest(f["estado"], f["version_test"]) for f in r.data}
+
+    def iniciar_test(self, alumno_id: str, test_id: str, version: str, ahora: datetime) -> None:
+        self._c.table("progreso_tests").upsert(
+            {"alumno_id": alumno_id, "test_id": test_id, "version_test": version,
+             "iniciado_en": ahora.isoformat()},
+            on_conflict="alumno_id,test_id", ignore_duplicates=True).execute()
+
+    def obtener_respuestas(self, alumno_id: str, test_id: str) -> dict[str, int | None]:
+        r = (self._c.table("respuestas").select("pregunta_id,valor")
+             .eq("alumno_id", alumno_id).eq("test_id", test_id).execute())
+        return {f["pregunta_id"]: f["valor"] for f in r.data}
+
+    def guardar_respuestas(self, alumno_id: str, test_id: str,
+                           respuestas: Mapping[str, int | None]) -> None:
+        filas = [{"alumno_id": alumno_id, "test_id": test_id, "pregunta_id": pid, "valor": v}
+                 for pid, v in respuestas.items()]
+        self._c.table("respuestas").upsert(
+            filas, on_conflict="alumno_id,test_id,pregunta_id").execute()
+
+    def terminar_test(self, alumno_id: str, test_id: str, ahora: datetime) -> None:
+        (self._c.table("progreso_tests")
+         .update({"estado": "terminado", "terminado_en": ahora.isoformat()})
+         .eq("alumno_id", alumno_id).eq("test_id", test_id).execute())
+
+    def terminar_alumno(self, alumno_id: str) -> None:
+        self._c.table("alumnos").update({"estado": "terminado"}).eq("id", alumno_id).execute()

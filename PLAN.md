@@ -99,3 +99,10 @@ Revisar el PDF resultante y ajustar las descripciones de cada especialidad.
 - **No hay código de grupo ni lista de matrículas autorizadas:** entra cualquier matrícula con formato válido. Se quitan la tabla `grupos`, `tests_habilitados` y la expiración; todos los alumnos contestan todos los tests. Riesgo aceptado: quien tenga el QR puede registrarse con datos inventados.
 - Una matrícula se registra una sola vez. Si sigue "en_curso", se reanuda con la misma matrícula y el mismo nombre; entrar con una matrícula ajena cuenta como intento fallido (5 por matrícula y 100 por IP, cada 15 min).
 - Los reportes "por grupo" de las Fases 4 y 5 quedan por definir (por ejemplo, por tutor o por fecha de aplicación).
+
+## Actualización: Fase 3 (test)
+- Preguntas en el orden original del Excel, en bloques de 10, con barra de avance; una columna y opciones de 44 px para el celular.
+- **Todas las preguntas son obligatorias:** un bloque se guarda completo o no se guarda. Un test termina cuando todas sus preguntas tienen respuesta; el alumno termina al acabar todos los tests.
+- Opción "SE" (sin experiencia) del test 2: cuenta como respuesta y se guarda como `valor` NULL (0 y NULL son distintos). Su tratamiento en el puntaje es de la Fase 4.
+- El avance vive en la BD. Si recarga la página, vuelve a entrar con matrícula y nombre y continúa en el primer bloque sin contestar. Si el .xlsx de un test cambia a mitad de la aplicación, el alumno en curso ve un aviso (se compara el hash `version_test`).
+- Al terminar, el alumno no ve su resultado (solo el docente).

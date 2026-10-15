@@ -1,7 +1,7 @@
 """Vista del alumno, Fase 2: registro en una sola pantalla (datos, aviso de privacidad
 y consentimiento).
 
-La captura de respuestas (Fase 3) se conecta en la etapa "listo".
+Al registrarse (o reanudar) el alumno pasa a views.test.
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from modules.acceso import AccesoError, DatosAcceso, DatosInvalidos, Repositorio, iniciar_acceso
+from views import test
 
 log = logging.getLogger(__name__)
 
@@ -67,21 +68,10 @@ def _registro(repo: Repositorio, aviso_md: str, cliente_ip: str) -> None:
         st.rerun()
 
 
-def _listo(tests: Sequence) -> None:
-    alumno = st.session_state["alumno"]
-    _encabezado()
-    st.subheader(f"Hola, {alumno.nombres.split()[0]}")
-    st.success("Te damos la bienvenida de nuevo." if st.session_state.get("reanudado")
-               else "Tu registro quedó listo.")
-    st.write("Contestarás en este orden:")
-    for i, t in enumerate(tests, start=1):
-        st.write(f"{i}. {t.titulo}")
-
-
-def render(repo: Repositorio, tests: Sequence, aviso_md: str, cliente_ip: str) -> None:
+def render(repo, tests: Sequence, aviso_md: str, cliente_ip: str) -> None:
     etapa = st.session_state.setdefault("etapa", "registro")
     if etapa == "listo" and "alumno" in st.session_state:
-        _listo(tests)
+        test.render(repo, st.session_state["alumno"], tests)
     else:
         st.session_state["etapa"] = "registro"
         _registro(repo, aviso_md, cliente_ip)

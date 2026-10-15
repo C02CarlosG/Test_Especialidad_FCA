@@ -9,7 +9,8 @@ Hojas requeridas en cada archivo:
   - preguntas:      id, bloque, texto, especialidad_codigo, invertida (SI/NO)
   - escala:         valor, etiqueta   (valor numérico, o la fila especial 'SE' = sin experiencia)
 Hoja opcional:
-  - info:           clave, valor   (clave 'titulo' = nombre visible del test)
+  - info:           clave, valor   (claves: 'titulo' = nombre visible, 'instrucciones' = texto
+                    que ve el alumno antes de contestar)
 Si algo está mal formado, se lanza ConfigError con TODOS los problemas encontrados.
 """
 from __future__ import annotations
@@ -64,6 +65,7 @@ class OpcionEscala:
 
 @dataclass(frozen=True)
 class TestConfig:
+    __test__ = False  # que pytest no lo tome por una clase de pruebas
     id: str  # nombre del archivo sin extensión; se guarda en la BD con cada respuesta
     titulo: str
     especialidades: tuple[Especialidad, ...]
@@ -73,6 +75,7 @@ class TestConfig:
     # Etiqueta de la opción "SE" (sin experiencia), si el test la tiene. Es un dato faltante,
     # no un número: se guarda como valor NULL y no entra a la escala numérica.
     sin_experiencia: str | None = None
+    instrucciones: str = ""
 
     @property
     def valor_min(self) -> int:
@@ -146,14 +149,17 @@ def load_test_config(ruta: str | Path) -> TestConfig:
     if errores:  # sin estructura básica no tiene caso validar contenido
         raise ConfigError(errores)
 
-    titulo = test_id
+    titulo, instrucciones = test_id, ""
     if "info" in hojas:
         info = hojas["info"]
         info.columns = [str(c).strip().lower() for c in info.columns]
         if {"clave", "valor"} <= set(info.columns):
             for _, fila in info.iterrows():
-                if _texto(fila["clave"]).lower() == "titulo" and _texto(fila["valor"]):
-                    titulo = _texto(fila["valor"])
+                clave, valor = _texto(fila["clave"]).lower(), _texto(fila["valor"])
+                if clave == "titulo" and valor:
+                    titulo = valor
+                elif clave == "instrucciones":
+                    instrucciones = valor
 
     # --- especialidades ---
     especialidades: list[Especialidad] = []
@@ -241,6 +247,7 @@ def load_test_config(ruta: str | Path) -> TestConfig:
         escala=tuple(escala),
         version=hashlib.sha256(contenido).hexdigest()[:16],
         sin_experiencia=sin_experiencia,
+        instrucciones=instrucciones,
     )
 
 

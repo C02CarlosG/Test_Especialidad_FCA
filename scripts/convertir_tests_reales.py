@@ -19,9 +19,10 @@ DESTINO = RAIZ / "config" / "tests"
 POR_BLOQUE = 10
 
 
-def escribir(ruta: Path, titulo, especialidades, preguntas, escala) -> None:
+def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escala) -> None:
     hojas = {
-        "info": pd.DataFrame([("titulo", titulo)], columns=["clave", "valor"]),
+        "info": pd.DataFrame([("titulo", titulo), ("instrucciones", instrucciones)],
+                             columns=["clave", "valor"]),
         "especialidades": pd.DataFrame(especialidades, columns=["codigo", "nombre", "descripcion", "perfil_profesional"]),
         "preguntas": pd.DataFrame(
             [(pid, ceil(n / POR_BLOQUE), txt, esp, "NO") for n, (pid, txt, esp) in enumerate(preguntas, 1)],
@@ -49,7 +50,9 @@ def test_1() -> None:
     for parte in ws["A6"].value.split("|"):
         valor, etiqueta = parte.split("=")
         escala.append((int(valor), etiqueta.strip()))
-    escribir(DESTINO / "1_test_big_five.xlsx", "Big Five (OCEAN)", esp, preguntas, escala)
+    # Se omite la frase de la calculadora que habla de la "columna Respuesta" de Excel.
+    instrucciones = ws["A5"].value.split(" Selecciona")[0].strip()
+    escribir(DESTINO / "1_test_big_five.xlsx", "Big Five (OCEAN)", instrucciones, esp, preguntas, escala)
 
 
 def test_2() -> None:
@@ -67,8 +70,9 @@ def test_2() -> None:
     # Escala 0-4 más la fila especial "SE" (sin experiencia: dato faltante, no es 0).
     escala = [(int(ws.cell(r, 1).value), ws.cell(r, 2).value) for r in range(14, 19)]
     escala.append(("SE", ws.cell(19, 2).value))
+    instrucciones = ws["A10"].value.split("\n")[0].strip()
     escribir(DESTINO / "2_test_orientacion_especialidades.xlsx",
-             "Orientación para especialidades en Administración", esp, preguntas, escala)
+             "Orientación para especialidades en Administración", instrucciones, esp, preguntas, escala)
 
 
 if __name__ == "__main__":
