@@ -56,7 +56,9 @@ def test_registro_lleva_al_primer_bloque_del_primer_test():
     assert not at.exception and not at.error
     assert len(at.radio) == 10  # bloque 1 de 12 preguntas = 10 preguntas
     assert at.subheader[0].value == "Test Uno"
-    assert [m.value for m in at.markdown if m.value.startswith("**1. ")] == ["**1. p1**"]
+    preguntas = [h.value for h in at.get("html") if 'class="pregunta' in h.value]
+    assert len(preguntas) == 10 and 'class="pregunta primera"' in preguntas[0]
+    assert '<span class="num">1</span><p>p1</p>' in preguntas[0]
 
 
 def test_no_hay_campo_de_codigo_de_grupo():

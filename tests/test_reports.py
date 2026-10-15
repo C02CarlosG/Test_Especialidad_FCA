@@ -192,3 +192,16 @@ def test_excel_individual_con_no_caracteres_sigue_siendo_valido(resultados):
     wb = openpyxl.load_workbook(io.BytesIO(xlsx))  # antes: ParseError por XML mal formado
     valores = [c.value for f in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in f]
     assert "Ana Pérez López" in valores and "Mtro. Ruiz" in valores
+
+
+def test_el_pdf_lleva_un_logo_a_cada_lado_del_titulo(resultados, tmp_path):
+    if not shutil.which("pdfimages"):
+        pytest.skip("pdfimages no está instalado")
+    (tmp_path / "r.pdf").write_bytes(pdf_individual(alumno(), [TEST1, TEST2], resultados, FECHA))
+    salida = subprocess.run(["pdfimages", "-list", "-f", "1", "-l", "1", str(tmp_path / "r.pdf")],
+                            capture_output=True, text=True).stdout
+    # cada logo es una imagen RGB más su máscara de transparencia (smask)
+    filas = [l.split() for l in salida.splitlines()[2:] if l.strip()]  # columnas: página, n.º, tipo, ancho, alto...
+    imagenes = [(f[3], f[4]) for f in filas if f[2] == "image"]
+    assert imagenes == [("165", "240"), ("204", "240")]  # FCA a la izquierda, UABJO a la derecha
+    assert sum(f[2] == "smask" for f in filas) == 2  # el fondo transparente se conserva

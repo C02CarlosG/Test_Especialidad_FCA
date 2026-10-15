@@ -7,7 +7,7 @@ from typing import Callable
 
 import streamlit as st
 
-from views import admin, alumno
+from views import admin, alumno, tema
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +18,8 @@ def pagina_alumno(cargar: Callable, aviso_md: str, secreto: Callable, cliente_ip
         tests, repo = cargar()
     except Exception:
         log.exception("Configuración incompleta")
+        tema.aplicar()
+        tema.marca()
         st.title("Evaluación Diagnóstica FCA")
         st.error("El test no está disponible por el momento. Avisa a tu docente.")
         return
@@ -34,6 +36,8 @@ def pagina_admin(cargar: Callable, secreto: Callable, cliente_ip: str) -> None:
         # Sin sesión no se muestra ningún detalle (rutas del servidor, errores de los archivos, secretos):
         # cualquiera puede abrir /admin. El detalle queda en los registros de la app.
         log.exception("Configuración incompleta (panel del docente)")
+        tema.aplicar()
+        tema.marca()
         st.title("Panel del docente")
         st.error("El panel no está disponible por un problema de configuración. "
                  "Revisa los registros de la app.")

@@ -19,6 +19,7 @@ from modules.panel import PanelDatos, cargar_panel, sincronizar_resultados
 from modules.qr_utils import UrlInvalida, qr_png, validar_url
 from modules.reports import excel_individual, pdf_individual
 from modules.reports_admin import ESTADOS, excel_concentrado, nombre_pdf, zip_pdfs
+from views import tema
 
 log = logging.getLogger(__name__)
 ZONA = ZoneInfo("America/Mexico_City")
@@ -77,6 +78,7 @@ def _vigilante() -> None:
 
 
 def _login(repo, esperada, cliente_ip: str) -> None:
+    tema.marca()
     st.title("Panel del docente")
     if not admin_auth.password_valida(esperada):
         st.error(admin_auth.PanelDeshabilitado().mensaje)
@@ -194,10 +196,12 @@ def _pestana_qr(url_publica: str | None) -> None:
 
 
 def render(repo, tests: Sequence[TestConfig], esperada: object, cliente_ip: str, url_publica: str | None) -> None:
+    tema.aplicar()
     if not _sesion_activa():
         _login(repo, esperada, cliente_ip)
         return
     st.html(_ANCHO)
+    tema.marca()
     st.title("Panel del docente")
     c1, c2 = st.columns([3, 1])
     if c2.button("Cerrar sesión", width="stretch"):

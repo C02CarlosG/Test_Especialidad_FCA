@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from html import escape
 from typing import Sequence
 from zoneinfo import ZoneInfo
 
@@ -16,22 +17,13 @@ from modules.acceso import Alumno
 from modules.avance import (AvanceError, Posicion, RepositorioAvance, calcular_posicion,
                             guardar_bloque)
 from modules.config_loader import TestConfig
-from modules.reports import (AVISO, excel_individual, grafica_radar, pct, pdf_individual,
-                             vista_conjunta)
+from modules.reports import AVISO, excel_individual, grafica_radar, pdf_individual, vista_conjunta
 from modules.resultados import resultados_del_alumno
 from modules.scoring import ResultadoTest
+from views import tema
 
 log = logging.getLogger(__name__)
 ZONA = ZoneInfo("America/Mexico_City")
-
-# Áreas de toque de al menos 44 px para contestar con el dedo en el celular.
-_CSS = """
-<style>
-label[data-testid="stRadioOption"] { min-height: 44px; padding: .5rem .75rem; margin-bottom: .4rem;
-  border: 1px solid rgba(128,128,128,.35); border-radius: .6rem; width: 100%; }
-label[data-testid="stRadioOption"]:has(input:checked) { border-color: #f5c400; background: rgba(245,196,0,.12); }
-</style>
-"""
 
 # Tras guardar un bloque la página nueva debe empezar arriba, no donde estaba el botón.
 _SUBIR = "<script>document.querySelector('[data-testid=\"stMain\"]')?.scrollTo(0, 0);</script>"
@@ -47,8 +39,9 @@ def _opciones(test: TestConfig) -> tuple[list, dict]:
     return list(etiquetas), etiquetas
 
 
-def _encabezado(pos: Posicion) -> None:
+def _encabezado(pos: Posicion, tests: Sequence[TestConfig]) -> None:
     test = pos.test
+    tema.cabecera(tests, pos.numero_test)
     st.title("Evaluación Diagnóstica FCA")
     st.subheader(test.titulo)
     st.progress(pos.contestadas / len(test.preguntas),
@@ -63,34 +56,42 @@ def _nombre(r: ResultadoTest, codigo: str | None) -> str:
     return "Sin datos suficientes" if codigo is None else next(a.nombre for a in r.afinidades if a.codigo == codigo)
 
 
+def _nota(r: ResultadoTest) -> str | None:
+    if r.empate_tecnico:
+        return "Empate técnico: tus dos opciones están a 5 puntos porcentuales o menos; considera ambas."
+    return None
+
+
 def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados: list[ResultadoTest],
                         archivos: dict) -> None:
     st.subheader("Tus resultados")
     st.caption(AVISO)
-    st.table({"Test": [t.titulo for t in tests],
-              "1ª opción": [_nombre(r, r.principal) for r in resultados],
-              "2ª opción": [_nombre(r, r.secundaria) for r in resultados]})
+    tema.tarjetas_resumen([
+        {"titulo": t.titulo, "primera": _nombre(r, r.principal),
+         "segunda": _nombre(r, r.secundaria) if r.secundaria else None, "nota": _nota(r)}
+        for t, r in zip(tests, resultados)])
     vc = vista_conjunta(resultados)
     if vc is not None:
-        st.markdown("**Vista conjunta de los tests**")
+        st.subheader("Los tests, juntos")
         st.caption("Coinciden en la primera opción." if vc.coinciden else
                    "Los tests no apuntan a la misma primera opción: compara y coméntalo con tu tutor.")
-        st.table({"Especialidad": [f.nombre for f in vc.filas],
-                  **{f"Test {i}": [pct(f.porcentajes[i - 1]) for f in vc.filas] for i in range(1, len(tests) + 1)},
-                  "Promedio": [pct(f.promedio) for f in vc.filas]})
+        tema.tabla(["Especialidad", *[f"Test {i}" for i in range(1, len(tests) + 1)], "Promedio"],
+                   [[escape(f.nombre), *[tema.porcentaje(x) for x in f.porcentajes], tema.porcentaje(f.promedio)]
+                    for f in vc.filas], numericas=range(1, len(tests) + 2))
         if "radar" not in archivos:
             archivos["radar"] = grafica_radar(resultados, [t.titulo for t in tests])
         if archivos["radar"]:
             st.image(archivos["radar"])
     for t, r in zip(tests, resultados):
         with st.expander(t.titulo):
-            st.table({"Área": [e.nombre for e in r.especialidades],
-                      "Porcentaje": [pct(e.porcentaje) for e in r.especialidades],
-                      "Nivel": [e.nivel or "—" for e in r.especialidades]})
+            tema.tabla(["Área", "Porcentaje", "Nivel"],
+                       [[escape(e.nombre), tema.porcentaje(e.porcentaje), tema.chip(e.nivel)] for e in r.especialidades],
+                       numericas=[1])
             if t.afinidades:
-                st.table({"Especialidad": [a.nombre for a in r.afinidades],
-                          "Afinidad": [pct(a.porcentaje) for a in r.afinidades],
-                          "Nivel": [a.nivel or "—" for a in r.afinidades]})
+                st.markdown("**Afinidad con las especialidades de la carrera**")
+                tema.tabla(["Especialidad", "Afinidad", "Nivel"],
+                           [[escape(a.nombre), tema.porcentaje(a.porcentaje), tema.chip(a.nivel)] for a in r.afinidades],
+                           numericas=[1])
     st.info("Descarga tus resultados ahora: al cerrar esta página ya no podrás volver a consultarlos aquí.")
     c1, c2 = st.columns(2)
     c1.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
@@ -101,6 +102,7 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
 
 
 def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool) -> None:
+    tema.cabecera(tests, len(tests) + 1)
     st.title("Evaluación Diagnóstica FCA")
     st.success("¡Terminaste! Tus respuestas quedaron guardadas.")
     if not mostrar:
@@ -147,17 +149,16 @@ def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig],
 
     if st.session_state.pop("reanudado", False):
         st.success("Te damos la bienvenida de nuevo. Continúas donde te quedaste.")
-    st.html(_CSS)
     if st.session_state.pop("subir", False):
         st.html(_SUBIR, unsafe_allow_javascript=True)
-    _encabezado(pos)
+    _encabezado(pos, tests)
 
     test = pos.test
     claves, etiquetas = _opciones(test)
     numero = {p.id: n for n, p in enumerate(test.preguntas, start=1)}
     with st.form(f"bloque-{test.id}-{pos.bloque}"):
-        for p in test.preguntas_de_bloque(pos.bloque):
-            st.markdown(f"**{numero[p.id]}. {p.texto}**")
+        for k, p in enumerate(test.preguntas_de_bloque(pos.bloque)):
+            tema.pregunta(numero[p.id], p.texto, primera=k == 0)
             st.radio(p.texto, claves, index=None, format_func=etiquetas.get,
                      key=f"r-{test.id}-{p.id}", label_visibility="collapsed")
         ultimo = pos.numero_bloque == pos.total_bloques

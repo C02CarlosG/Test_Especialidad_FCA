@@ -21,9 +21,11 @@ from modules.acceso import Alumno
 from modules.config_loader import TestConfig
 from modules.scoring import ResultadoTest
 
+LOGOS = (Path(__file__).resolve().parent.parent / "static" / "logo_fca.png",
+         Path(__file__).resolve().parent.parent / "static" / "logo_uabjo.png")  # izquierda, derecha
 AVISO = ("Estos resultados son una guía de orientación para elegir tu especialidad; no son un "
          "diagnóstico psicológico ni una decisión obligatoria. Coméntalos con tu tutor u orientador.")
-COLORES = ("#1f3a8a", "#d4a017", "#2e7d32", "#b23a48")  # un color por test (hasta 4)
+COLORES = ("#0F1E4A", "#E5B300", "#17683F", "#B23A48")  # marino, oro, verde, granate: un color por test (hasta 4)
 
 
 @dataclass(frozen=True)
@@ -212,7 +214,28 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         return t
 
     ancho = letter[0] - 4 * cm
-    historia = [p("Evaluación Diagnóstica FCA", h1), p("Reporte de resultados", h3),
+
+    def _encabezado_pdf(p, h1, h3, ancho):
+        """Logo de la FCA a la izquierda, título al centro y logo de la UABJO a la derecha."""
+        alto = 2.3 * cm
+
+        def logo(ruta):
+            if not ruta.is_file():
+                return ""
+            from PIL import Image as PILImage
+            w, h = PILImage.open(ruta).size
+            return Image(str(ruta), width=alto * w / h, height=alto, mask="auto")
+
+        centro = [Paragraph("Evaluación Diagnóstica FCA", ParagraphStyle("h1c", parent=h1, alignment=1)),
+                  Paragraph("Reporte de resultados", ParagraphStyle("h3c", parent=h3, alignment=1))]
+        t = Table([[logo(LOGOS[0]), centro, logo(LOGOS[1])]], colWidths=[2.9 * cm, ancho - 5.8 * cm, 2.9 * cm])
+        t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                               ("ALIGN", (2, 0), (2, 0), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                               ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                               ("LINEBELOW", (0, 0), (-1, 0), 1.2, colors.HexColor("#E5B300")),
+                               ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]))
+        return t
+    historia = [_encabezado_pdf(p, h1, h3, ancho),
                 tabla([["Alumno", alumno.nombre_completo], ["Matrícula", alumno.matricula],
                        ["Edad", str(alumno.edad)], ["Tutor / orientador", alumno.tutor],
                        ["Fecha", fecha.strftime("%d/%m/%Y")]], [4 * cm, ancho - 4 * cm], cabecera=False),

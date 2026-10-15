@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from modules.acceso import AccesoError, DatosAcceso, DatosInvalidos, Repositorio, iniciar_acceso
-from views import test
+from views import tema, test
 
 log = logging.getLogger(__name__)
 
@@ -22,13 +22,14 @@ SUBTITULO = "Test Big Five & Orientación Vocacional en Administración"
 ZONA = ZoneInfo("America/Mexico_City")
 
 
-def _encabezado() -> None:
+def _encabezado(tests: Sequence, paso: int = 0) -> None:
+    tema.cabecera(tests, paso)
     st.title(TITULO)
     st.caption(SUBTITULO)
 
 
-def _registro(repo: Repositorio, aviso_md: str, cliente_ip: str) -> None:
-    _encabezado()
+def _registro(repo: Repositorio, tests: Sequence, aviso_md: str, cliente_ip: str) -> None:
+    _encabezado(tests)
     st.subheader("Registro del estudiante")
     with st.form("registro"):
         c1, c2, c3 = st.columns(3)
@@ -69,9 +70,10 @@ def _registro(repo: Repositorio, aviso_md: str, cliente_ip: str) -> None:
 
 
 def render(repo, tests: Sequence, aviso_md: str, cliente_ip: str, mostrar_resultados: bool = True) -> None:
+    tema.aplicar()
     etapa = st.session_state.setdefault("etapa", "registro")
     if etapa == "listo" and "alumno" in st.session_state:
         test.render(repo, st.session_state["alumno"], tests, mostrar_resultados)
     else:
         st.session_state["etapa"] = "registro"
-        _registro(repo, aviso_md, cliente_ip)
+        _registro(repo, tests, aviso_md, cliente_ip)
