@@ -1,0 +1,202 @@
+"""Carga y validación de config/test.xlsx.
+
+El archivo define el test sin tocar código. Hojas requeridas:
+  - especialidades: codigo, nombre, descripcion, perfil_profesional
+  - preguntas:      id, bloque, texto, especialidad_codigo, invertida (SI/NO)
+  - escala:         valor, etiqueta
+Si algo está mal formado, se lanza ConfigError con TODOS los problemas encontrados.
+"""
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass
+from pathlib import Path
+
+import pandas as pd
+
+HOJAS_REQUERIDAS: dict[str, list[str]] = {
+    "especialidades": ["codigo", "nombre", "descripcion", "perfil_profesional"],
+    "preguntas": ["id", "bloque", "texto", "especialidad_codigo", "invertida"],
+    "escala": ["valor", "etiqueta"],
+}
+
+
+class ConfigError(Exception):
+    """El archivo de configuración del test no es válido."""
+
+    def __init__(self, errores: list[str]) -> None:
+        self.errores = errores
+        super().__init__("test.xlsx inválido:\n- " + "\n- ".join(errores))
+
+
+@dataclass(frozen=True)
+class Especialidad:
+    codigo: str
+    nombre: str
+    descripcion: str
+    perfil_profesional: str
+
+
+@dataclass(frozen=True)
+class Pregunta:
+    id: str
+    bloque: int
+    texto: str
+    especialidad_codigo: str
+    invertida: bool
+
+
+@dataclass(frozen=True)
+class OpcionEscala:
+    valor: int
+    etiqueta: str
+
+
+@dataclass(frozen=True)
+class TestConfig:
+    especialidades: tuple[Especialidad, ...]
+    preguntas: tuple[Pregunta, ...]
+    escala: tuple[OpcionEscala, ...]
+    version: str  # hash del archivo: identifica con qué test respondió cada alumno
+
+    @property
+    def valor_min(self) -> int:
+        return self.escala[0].valor
+
+    @property
+    def valor_max(self) -> int:
+        return self.escala[-1].valor
+
+    @property
+    def bloques(self) -> list[int]:
+        return sorted({p.bloque for p in self.preguntas})
+
+    def preguntas_de_bloque(self, bloque: int) -> list[Pregunta]:
+        return [p for p in self.preguntas if p.bloque == bloque]
+
+    def especialidad(self, codigo: str) -> Especialidad:
+        return next(e for e in self.especialidades if e.codigo == codigo)
+
+
+def _texto(valor: object) -> str:
+    return "" if pd.isna(valor) else str(valor).strip()
+
+
+def _entero(valor: object) -> int | None:
+    if pd.isna(valor):
+        return None
+    try:
+        f = float(valor)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return int(f) if f.is_integer() else None
+
+
+def _duplicados(valores: list[str]) -> list[str]:
+    vistos: set[str] = set()
+    repetidos: list[str] = []
+    for v in valores:
+        if v in vistos and v not in repetidos:
+            repetidos.append(v)
+        vistos.add(v)
+    return repetidos
+
+
+def load_test_config(ruta: str | Path) -> TestConfig:
+    ruta = Path(ruta)
+    if not ruta.is_file():
+        raise ConfigError([f"No se encontró el archivo {ruta}"])
+    contenido = ruta.read_bytes()
+    try:
+        hojas = pd.read_excel(ruta, sheet_name=None, dtype=object, engine="openpyxl")
+    except Exception as exc:  # archivo corrupto o no es xlsx
+        raise ConfigError([f"No se pudo abrir {ruta.name} como Excel: {exc}"]) from exc
+
+    errores: list[str] = []
+    hojas = {nombre.strip().lower(): df for nombre, df in hojas.items()}
+    for hoja, columnas in HOJAS_REQUERIDAS.items():
+        if hoja not in hojas:
+            errores.append(f"Falta la hoja '{hoja}'.")
+            continue
+        hojas[hoja].columns = [str(c).strip().lower() for c in hojas[hoja].columns]
+        faltan = [c for c in columnas if c not in hojas[hoja].columns]
+        if faltan:
+            errores.append(f"La hoja '{hoja}' no tiene las columnas: {', '.join(faltan)}.")
+    if errores:  # sin estructura básica no tiene caso validar contenido
+        raise ConfigError(errores)
+
+    # --- especialidades ---
+    especialidades: list[Especialidad] = []
+    for i, fila in hojas["especialidades"].iterrows():
+        n = int(i) + 2  # número de fila en Excel (encabezado = 1)
+        esp = Especialidad(*(_texto(fila[c]) for c in HOJAS_REQUERIDAS["especialidades"]))
+        if not esp.codigo or not esp.nombre:
+            errores.append(f"especialidades fila {n}: 'codigo' y 'nombre' son obligatorios.")
+            continue
+        especialidades.append(esp)
+    for cod in _duplicados([e.codigo for e in especialidades]):
+        errores.append(f"especialidades: código repetido '{cod}'.")
+    if len(especialidades) < 2:
+        errores.append("Se requieren al menos 2 especialidades.")
+    codigos = {e.codigo for e in especialidades}
+
+    # --- escala ---
+    escala: list[OpcionEscala] = []
+    for i, fila in hojas["escala"].iterrows():
+        n = int(i) + 2
+        valor = _entero(fila["valor"])
+        if valor is None:
+            errores.append(f"escala fila {n}: 'valor' debe ser un número entero.")
+            continue
+        escala.append(OpcionEscala(valor, _texto(fila["etiqueta"])))
+    escala.sort(key=lambda o: o.valor)
+    valores = [o.valor for o in escala]
+    if len(valores) < 2:
+        errores.append("La escala necesita al menos 2 valores.")
+    elif len(set(valores)) != len(valores):
+        errores.append("escala: hay valores repetidos.")
+    elif valores != list(range(valores[0], valores[-1] + 1)):
+        errores.append("escala: los valores deben ser enteros consecutivos (p. ej. 1,2,3,4,5).")
+    if any(not o.etiqueta for o in escala):
+        errores.append("escala: todas las opciones necesitan etiqueta.")
+
+    # --- preguntas ---
+    preguntas: list[Pregunta] = []
+    for i, fila in hojas["preguntas"].iterrows():
+        n = int(i) + 2
+        pid, texto = _texto(fila["id"]), _texto(fila["texto"])
+        esp = _texto(fila["especialidad_codigo"])
+        bloque = _entero(fila["bloque"])
+        inv = _texto(fila["invertida"]).upper()
+        fila_ok = True
+        if not pid or not texto:
+            errores.append(f"preguntas fila {n}: 'id' y 'texto' son obligatorios.")
+            fila_ok = False
+        if bloque is None or bloque < 1:
+            errores.append(f"preguntas fila {n}: 'bloque' debe ser un entero >= 1.")
+            fila_ok = False
+        if esp not in codigos:
+            errores.append(f"preguntas fila {n}: la especialidad '{esp}' no existe.")
+            fila_ok = False
+        if inv not in ("SI", "NO", "SÍ"):
+            errores.append(f"preguntas fila {n}: 'invertida' debe ser SI o NO (es '{inv}').")
+            fila_ok = False
+        if fila_ok:
+            preguntas.append(Pregunta(pid, bloque or 1, texto, esp, inv != "NO"))
+    for pid in _duplicados([p.id for p in preguntas]):
+        errores.append(f"preguntas: id repetido '{pid}'.")
+    if not preguntas:
+        errores.append("La hoja 'preguntas' está vacía.")
+    usadas = {p.especialidad_codigo for p in preguntas}
+    for cod in sorted(codigos - usadas):
+        errores.append(f"La especialidad '{cod}' no tiene ninguna pregunta.")
+
+    if errores:
+        raise ConfigError(errores)
+
+    return TestConfig(
+        especialidades=tuple(especialidades),
+        preguntas=tuple(preguntas),
+        escala=tuple(escala),
+        version=hashlib.sha256(contenido).hexdigest()[:16],
+    )
