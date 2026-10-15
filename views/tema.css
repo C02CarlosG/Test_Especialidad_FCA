@@ -20,7 +20,7 @@
 [data-testid="stHeader"] { background: transparent; }
 footer, [data-testid="stDecoration"] { display: none; }
 html, body, [data-testid="stApp"] { font-family: var(--sans); }
-h1, h2, h3 { font-family: var(--serif); font-optical-sizing: auto; }
+h1, h2, h3 { font-family: var(--serif); font-optical-sizing: auto; font-variant-numeric: lining-nums; }
 h1 { font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; color: var(--marino); padding-bottom: .25rem; }
 h1::after { content: ""; display: block; width: 3.5rem; height: 4px; margin-top: .6rem; background: var(--oro); border-radius: 2px; }
 h2, h3 { color: var(--marino); letter-spacing: -0.005em; }
@@ -95,23 +95,37 @@ label[data-testid="stRadioOption"]:has(input:checked) p, label[data-testid="stRa
 label[data-testid="stRadioOption"]:has(input:focus-visible) { outline: 3px solid var(--oro); outline-offset: 2px; }
 
 /* ---- resultados ---- */
-.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin: .4rem 0 1.4rem; }
-.resumen section { background: var(--papel); border: 1px solid var(--linea); border-top: 4px solid var(--oro); border-radius: 1rem; padding: 1.1rem 1.2rem 1.2rem;
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .9rem; margin: .4rem 0 1.4rem; }
+.resumen section { position: relative; overflow: hidden; background: var(--papel); border: 1px solid var(--linea); border-radius: 1.1rem; padding: 1.15rem 1.2rem 1.25rem 1.5rem;
   box-shadow: 0 1px 2px rgba(15, 30, 74, .05), 0 10px 28px -14px rgba(15, 30, 74, .22); }
-.resumen .test { margin: 0 0 .7rem; color: var(--suave); font-size: .82rem; font-weight: 600; }
-.resumen .primera { margin: 0; font: 650 1.55rem/1.15 var(--serif); color: var(--marino); letter-spacing: -.01em; }
-.resumen .rol { display: block; margin-bottom: .2rem; color: var(--suave); font: 600 .78rem/1.2 var(--sans); letter-spacing: 0; }
-.resumen .segunda { margin: .9rem 0 0; padding-top: .8rem; border-top: 1px solid var(--linea); color: var(--tinta); font-size: .95rem; }
+.resumen section::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--oro); }
+.resumen .test { margin: 0 0 .8rem; color: var(--suave); font: 700 .68rem/1.3 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+.resumen .primera { margin: 0; font: 600 1.6rem/1.12 var(--serif); color: var(--marino); letter-spacing: -.015em; }
+.resumen .rol { display: block; margin-bottom: .3rem; color: var(--suave); font: 600 .78rem/1.2 var(--sans); letter-spacing: 0; }
+.resumen .segunda { margin: .95rem 0 0; padding-top: .8rem; border-top: 1px solid var(--linea); color: var(--tinta); font-size: .93rem; }
 .resumen .segunda b { color: var(--marino); }
 .resumen .nota { margin: .7rem 0 0; color: var(--suave); font-size: .82rem; }
+/* el primer test va en marino y el segundo en dorado suave, igual que los KPI del panel */
+.resumen section:nth-child(odd) { background: var(--marino); border-color: var(--marino); }
+.resumen section:nth-child(odd) .test, .resumen section:nth-child(odd) .rol, .resumen section:nth-child(odd) .nota { color: #C9D3EC; }
+.resumen section:nth-child(odd) .primera, .resumen section:nth-child(odd) .segunda, .resumen section:nth-child(odd) .segunda b { color: #fff; }
+.resumen section:nth-child(odd) .segunda { border-top-color: rgba(255, 255, 255, .22); }
+.resumen section:nth-child(even) { background: var(--ambar-f); border-color: #F0D98A; }
+.resumen section:nth-child(even)::before { background: var(--marino); }
+.resumen section:nth-child(even) .segunda { border-top-color: #E6CE7C; }
 
-.tabla-w { overflow-x: auto; margin: .3rem 0 1rem; border: 1px solid var(--linea); border-radius: .9rem; background: var(--papel); }
-.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
-.tabla th { text-align: left; font-weight: 650; color: var(--marino); background: #F4F7FC; padding: .65rem .8rem; border-bottom: 1px solid var(--linea); white-space: nowrap; }
-.tabla td { padding: .6rem .8rem; border-bottom: 1px solid #E8EDF6; vertical-align: middle; }
+.tabla-w { overflow-x: auto; margin: .4rem 0 1.2rem; border: 1px solid var(--linea); border-top: 4px solid var(--oro); border-radius: 1rem; background: var(--papel);
+  box-shadow: 0 1px 2px rgba(15, 30, 74, .05), 0 10px 28px -14px rgba(15, 30, 74, .22); }
+.tabla { width: 100%; border-collapse: collapse; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.tabla th { text-align: left; font: 700 .68rem/1.3 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--suave); background: var(--papel);
+  padding: .85rem .65rem .6rem; border-bottom: 2px solid var(--marino); white-space: nowrap; }
+.tabla td { padding: .65rem .65rem; border-bottom: 1px solid #E8EDF6; vertical-align: middle; }
+.tabla tbody tr:nth-child(even) td { background: #F6F8FD; }
+.tabla tbody tr:hover td { background: #EAF0FB; }
+.tabla td:first-child { font-weight: 600; color: var(--marino); }
 .tabla tr:last-child td { border-bottom: 0; }
 .tabla td.num, .tabla th.num { text-align: right; white-space: nowrap; }
-.barra { display: inline-block; vertical-align: middle; width: 4.5rem; height: .45rem; margin-right: .55rem; border-radius: 99px; background: #E3E9F4; overflow: hidden; }
+.barra { display: inline-block; vertical-align: middle; width: 2.3rem; height: .45rem; margin-right: .4rem; border-radius: 99px; background: #E3E9F4; overflow: hidden; }
 .barra i { display: block; height: 100%; background: var(--marino); border-radius: 99px; }
 .chip { display: inline-block; padding: .12rem .6rem; border-radius: 99px; font-size: .78rem; font-weight: 650; white-space: nowrap; }
 .chip.alto { background: var(--verde-f); color: var(--verde); }
@@ -119,9 +133,24 @@ label[data-testid="stRadioOption"]:has(input:focus-visible) { outline: 3px solid
 .chip.bajo { background: var(--pizarra-f); color: var(--pizarra); }
 
 /* ---- panel del docente ---- */
-[data-testid="stMetric"] { background: var(--papel); border: 1px solid var(--linea); border-radius: 1rem; padding: .9rem 1.1rem; }
-[data-testid="stMetricLabel"] p { color: var(--suave); font-weight: 600; font-size: .85rem; }
-[data-testid="stMetricValue"] { color: var(--marino); font-family: var(--serif); }
+/* KPIs: tres mosaicos en una sola fila (también en celular): blanco, marino y dorado suave */
+[data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) { flex-wrap: nowrap; gap: .7rem; }
+[data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="stColumn"] { min-width: 0; }
+[data-testid="stMetric"] { position: relative; overflow: hidden; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: .1rem;
+  background: var(--papel); border: 1px solid var(--linea); border-radius: 1.1rem; padding: 1rem 1.1rem 1.05rem;
+  box-shadow: 0 1px 2px rgba(15, 30, 74, .05), 0 10px 28px -14px rgba(15, 30, 74, .22); }
+[data-testid="stMetric"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--oro); }
+[data-testid="stMetricValue"] { color: var(--marino); font-family: var(--serif); font-weight: 600; font-size: 2.6rem; line-height: 1; letter-spacing: -.02em; font-variant-numeric: lining-nums; }
+[data-testid="stMetricLabel"] p { color: var(--suave); font: 700 .68rem/1.25 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+[data-testid="stColumn"]:nth-child(2) [data-testid="stMetric"] { background: var(--marino); border-color: var(--marino); }
+[data-testid="stColumn"]:nth-child(2) [data-testid="stMetricValue"] { color: #fff; }
+[data-testid="stColumn"]:nth-child(2) [data-testid="stMetricLabel"] p { color: #C9D3EC; }
+[data-testid="stColumn"]:nth-child(3) [data-testid="stMetric"] { background: var(--ambar-f); border-color: #F0D98A; }
+[data-testid="stColumn"]:nth-child(3) [data-testid="stMetric"]::before { background: var(--marino); }
+@media (max-width: 520px) { [data-testid="stMetricValue"] { font-size: 1.9rem; } [data-testid="stMetric"] { padding: .8rem .8rem .85rem; } }
+/* tabla del panel (st.dataframe): mismo marco de tarjeta que las tablas del alumno */
+[data-testid="stDataFrame"] { border: 1px solid var(--linea); border-top: 4px solid var(--oro); border-radius: 1rem; overflow: hidden; background: var(--papel);
+  box-shadow: 0 1px 2px rgba(15, 30, 74, .05), 0 10px 28px -14px rgba(15, 30, 74, .22); }
 [data-baseweb="tab"] { font-weight: 600; }
 [data-baseweb="tab-highlight"] { background: var(--oro); height: 3px; }
 

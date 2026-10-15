@@ -180,6 +180,42 @@ def _registrar_fuentes() -> tuple[str, str]:
         return "Helvetica", "Helvetica-Bold"
 
 
+FUENTES_PDF = Path(__file__).resolve().parent.parent / "static" / "fonts" / "pdf"
+
+
+def _fuentes_marca() -> tuple[str, str, str] | None:
+    """(texto, texto en negrita, títulos) con la tipografía de la app: Plus Jakarta Sans y Fraunces.
+    None si faltan los archivos: el PDF usa entonces DejaVu Sans."""
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        archivos = {"Jakarta": "plus-jakarta-sans-latin-400-normal.ttf", "Jakarta-Bold": "plus-jakarta-sans-latin-700-normal.ttf",
+                    "Fraunces": "fraunces-latin-600-normal.ttf"}
+        for nombre, archivo in archivos.items():
+            if nombre not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(TTFont(nombre, str(FUENTES_PDF / archivo)))
+        return "Jakarta", "Jakarta-Bold", "Fraunces"
+    except Exception:
+        return None
+
+
+def _con_respaldo(texto: str, fuente: str, respaldo: str) -> str:
+    """Escapa `texto` para un Paragraph y pone en la fuente de respaldo los caracteres que `fuente`
+    no tiene (alfabetos no latinos, 'ł', 'ő'...), para que nunca salga '■'."""
+    from reportlab.pdfbase import pdfmetrics
+    cubiertos = pdfmetrics.getFont(fuente).face.charToGlyph
+    salida, fuera = [], False
+    for ch in texto:
+        sin = ord(ch) not in cubiertos and not ch.isspace()
+        if sin != fuera:
+            salida.append(f'<font name="{respaldo}">' if sin else "</font>")
+            fuera = sin
+        salida.append(escape(ch))
+    if fuera:
+        salida.append("</font>")
+    return "".join(salida)
+
+
 def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence[ResultadoTest],
                    fecha: datetime) -> bytes:
     from reportlab.lib import colors
@@ -190,26 +226,39 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
 
     azul = colors.HexColor(COLORES[0])
     base = getSampleStyleSheet()
-    normal, negrita = _registrar_fuentes()
-    h1 = ParagraphStyle("h1", parent=base["Title"], fontName=negrita, fontSize=18, textColor=azul, spaceAfter=4)
-    h2 = ParagraphStyle("h2", parent=base["Heading2"], fontName=negrita, textColor=azul, spaceBefore=12,
-                        spaceAfter=4)
-    h3 = ParagraphStyle("h3", parent=base["Heading3"], fontName=negrita)
-    cuerpo = ParagraphStyle("c", parent=base["BodyText"], fontName=normal, fontSize=9.5, leading=13)
-    chico = ParagraphStyle("s", parent=cuerpo, fontSize=8.5, textColor=colors.HexColor("#555555"))
-    celda = ParagraphStyle("t", parent=cuerpo, fontSize=8, leading=10.5)
+    respaldo, respaldo_neg = _registrar_fuentes()  # DejaVu: cubre cualquier alfabeto
+    marca = _fuentes_marca()
+    normal, negrita, titulos = marca if marca else (respaldo, respaldo_neg, respaldo_neg)
+    tinta = colors.HexColor("#1E2A4A")
+    h1 = ParagraphStyle("h1", parent=base["Title"], fontName=titulos, fontSize=20, leading=24, textColor=azul, spaceAfter=2)
+    h2 = ParagraphStyle("h2", parent=base["Heading2"], fontName=titulos, fontSize=14, textColor=azul, spaceBefore=14,
+                        spaceAfter=5)
+    h3 = ParagraphStyle("h3", parent=base["Heading3"], fontName=negrita, fontSize=8, leading=10,
+                        textColor=colors.HexColor("#5A6788"))
+    cuerpo = ParagraphStyle("c", parent=base["BodyText"], fontName=normal, fontSize=9.5, leading=13.5, textColor=tinta)
+    chico = ParagraphStyle("s", parent=cuerpo, fontSize=8.5, textColor=colors.HexColor("#5A6788"))
+    celda = ParagraphStyle("t", parent=cuerpo, fontSize=8.3, leading=11)
+    celda_cab = ParagraphStyle("tc", parent=celda, fontName=negrita, textColor=colors.white)
+
+    def _txt(texto, estilo):
+        return _con_respaldo(str(texto), estilo.fontName, respaldo)
 
     def p(texto, estilo=cuerpo):
-        return Paragraph(escape(texto), estilo)
+        return Paragraph(_txt(texto, estilo), estilo)
 
     def tabla(filas, anchos, cabecera=True):
-        datos = [[Paragraph(escape(str(c)), celda) for c in fila] for fila in filas]
+        datos = [[Paragraph(_txt(c, celda_cab if cabecera and i == 0 else celda), celda_cab if cabecera and i == 0 else celda)
+                  for c in fila] for i, fila in enumerate(filas)]
         t = Table(datos, colWidths=anchos, repeatRows=1 if cabecera else 0)
-        estilo = [("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#c8c8c8")),
+        estilo = [("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#D6DDEB")),
                   ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                  ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]
+                  ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                  ("TOPPADDING", (0, 0), (-1, -1), 4.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 4.5)]
         if cabecera:
-            estilo += [("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8edf8"))]
+            estilo += [("BACKGROUND", (0, 0), (-1, 0), azul),
+                       ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F7FC")])]
+        else:
+            estilo += [("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F4F7FC"))]
         t.setStyle(TableStyle(estilo))
         return t
 
@@ -226,8 +275,9 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
             w, h = PILImage.open(ruta).size
             return Image(str(ruta), width=alto * w / h, height=alto, mask="auto")
 
-        centro = [Paragraph("Evaluación Diagnóstica FCA", ParagraphStyle("h1c", parent=h1, alignment=1)),
-                  Paragraph("Reporte de resultados", ParagraphStyle("h3c", parent=h3, alignment=1))]
+        centro = [Paragraph("UNIVERSIDAD AUTÓNOMA BENITO JUÁREZ DE OAXACA", ParagraphStyle("k", parent=h3, alignment=1, fontSize=6.6, spaceAfter=3)),
+                  Paragraph("Evaluación Diagnóstica FCA", ParagraphStyle("h1c", parent=h1, alignment=1)),
+                  Paragraph("Reporte de resultados", ParagraphStyle("h3c", parent=h3, alignment=1, fontSize=8.5))]
         t = Table([[logo(LOGOS[0]), centro, logo(LOGOS[1])]], colWidths=[2.9 * cm, ancho - 5.8 * cm, 2.9 * cm])
         t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (0, 0), "LEFT"),
                                ("ALIGN", (2, 0), (2, 0), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
