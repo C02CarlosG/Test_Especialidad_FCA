@@ -94,10 +94,10 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
     st.info("Descarga tus resultados ahora: al cerrar esta página ya no podrás volver a consultarlos aquí.")
     c1, c2 = st.columns(2)
     c1.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
-                       mime="application/pdf", use_container_width=True, type="primary")
+                       mime="application/pdf", use_container_width=True, type="primary", on_click="ignore")
     c2.download_button("Descargar Excel", archivos["xlsx"], file_name=f"resultados_{alumno.matricula}.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                       use_container_width=True)
+                       use_container_width=True, on_click="ignore")
 
 
 def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool) -> None:
@@ -107,24 +107,30 @@ def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], m
         st.write("Gracias por tu participación. Tu tutor u orientador te compartirá los resultados. "
                  "Ya puedes cerrar esta página.")
         return
-    try:
-        archivos = st.session_state.setdefault(f"archivos-{alumno.id}", {})
-        if "pdf" not in archivos:
+    archivos = st.session_state.setdefault(f"archivos-{alumno.id}", {})
+    if "pdf" not in archivos:
+        try:
+            # Todo o nada: si algo falla, no queda caché a medias y el reintento lo calcula de nuevo.
             resultados = resultados_del_alumno(repo, alumno, tests)
             fecha = datetime.now(ZONA)
-            archivos["resultados"] = resultados
-            archivos["pdf"] = pdf_individual(alumno, tests, resultados, fecha)
-            archivos["xlsx"] = excel_individual(alumno, tests, resultados, fecha)
-    except Exception:
-        log.exception("No se pudieron generar los resultados del alumno")
-        st.error("Tus respuestas están guardadas, pero no pudimos generar tus resultados ahora. "
-                 "Avisa a tu tutor.")
-        return
+            pdf = pdf_individual(alumno, tests, resultados, fecha)
+            xlsx = excel_individual(alumno, tests, resultados, fecha)
+        except Exception:
+            log.exception("No se pudieron generar los resultados del alumno")
+            st.error("Tus respuestas están guardadas, pero no pudimos generar tus resultados ahora. "
+                     "Pulsa Reintentar; si sigue fallando, tu tutor podrá entregarte tus resultados.")
+            st.button("Reintentar", type="primary")  # al pulsarlo, Streamlit vuelve a ejecutar esta pantalla
+            return
+        archivos.update(resultados=resultados, pdf=pdf, xlsx=xlsx)
     _mostrar_resultados(alumno, tests, archivos["resultados"], archivos)
 
 
 def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig],
            mostrar_resultados: bool = True) -> None:
+    if mostrar_resultados and "pdf" in st.session_state.get(f"archivos-{alumno.id}", {}):
+        # Ya terminó y sus resultados están en memoria: no hace falta consultar la BD en cada rerun.
+        _fin(repo, alumno, tests, mostrar_resultados)
+        return
     try:
         pos = calcular_posicion(repo, alumno, tests)
     except AvanceError as exc:
@@ -132,7 +138,8 @@ def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig],
         return
     except Exception:
         log.exception("Error al calcular el avance del alumno")
-        st.error("No pudimos cargar tu avance. Recarga la página e inténtalo de nuevo.")
+        st.error("No pudimos cargar tu avance. Pulsa Reintentar; tus respuestas guardadas no se pierden.")
+        st.button("Reintentar", type="primary")
         return
     if pos is None:
         _fin(repo, alumno, tests, mostrar_resultados)

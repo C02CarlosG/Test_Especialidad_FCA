@@ -108,3 +108,78 @@ def test_excel_no_deja_pasar_formulas_del_alumno(resultados):
     celdas = [c.value for fila in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in fila if isinstance(c.value, str)]
     assert not any(v.startswith(("=", "@")) for v in celdas)
     assert any(v.startswith("'=") for v in celdas) and any(v == "'@cmd" for v in celdas)
+
+
+# ---- regresiones de la revisión independiente de la Fase 4 ----
+
+@pytest.mark.parametrize("n,esperado", [(1, "6.3 %"), (5, "31.3 %"), (9, "56.3 %"), (13, "81.3 %")])
+def test_pct_redondea_la_mitad_hacia_arriba_como_excel(n, esperado):
+    # f"{x:.1f}" daría 6.2/31.2/56.2/81.2 (mitad a par) y el Excel mostraría .3
+    assert pct(Fraction(n, 16)) == esperado
+
+
+def test_pct_valores_basicos():
+    assert [pct(Fraction(a, b)) for a, b in [(3, 4), (1, 3), (0, 1), (1, 1), (2, 3)]] == [
+        "75.0 %", "33.3 %", "0.0 %", "100.0 %", "66.7 %"]
+
+
+def test_pantalla_pdf_y_excel_muestran_el_mismo_porcentaje():
+    todo = {k: 2 for k in GOLDEN["test2"][0]["respuestas"]}
+    todo["M01"] = None  # una "SE": Mercadotecnia = 8/16 ... 9/16 con otro valor
+    todo.update(M02=3, M04=2, M05=2, M09=2)
+    r = calificar(TEST2, todo)
+    mkt = r.especialidades[0]
+    assert mkt.porcentaje == Fraction(9, 16)
+    ws = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST2], [r], FECHA)))["Test 1"]
+    celda = next(f[3] for f in ws.iter_rows(min_row=4, max_row=8) if f[0].value == mkt.nombre)
+    assert celda.value == 0.5625 and celda.number_format == "0.0%"  # Excel lo muestra 56.3 %
+    assert pct(mkt.porcentaje) == "56.3 %"
+
+
+def test_radar_no_dibuja_sin_datos_como_cero(resultados):
+    from modules.reports import puntos_radar
+    sin_mkt = {k: ("SE" if k.startswith("M") else v) for k, v in GOLDEN["test2"][20]["respuestas"].items()}
+    r = [resultados[0], calificar(TEST2, _resp(sin_mkt))]
+    vc = vista_conjunta(r)
+    idx_mkt = next(k for k, f in enumerate(vc.filas) if f.codigo == "MKT")
+    assert idx_mkt not in [k for k, _ in puntos_radar(vc, 1)]       # test 2: eje omitido
+    assert idx_mkt in [k for k, _ in puntos_radar(vc, 0)]           # test 1 sí tiene dato
+    assert all(0 < v <= 100 for _, v in puntos_radar(vc, 1))
+    assert grafica_radar(r, ["T1", "T2"]).startswith(b"\x89PNG")
+
+
+def test_radar_con_un_solo_eje_con_dato_no_falla(resultados):
+    casi_todo_se = {k: (None if not k.startswith("M") else 3) for k in GOLDEN["test2"][0]["respuestas"]}
+    r = [resultados[0], calificar(TEST2, casi_todo_se)]
+    assert grafica_radar(r, ["T1", "T2"]).startswith(b"\x89PNG")
+
+
+def test_el_radar_conserva_su_proporcion_en_el_pdf(resultados, tmp_path):
+    from modules.reports import dimensiones_png
+    png = grafica_radar(resultados, ["Test 1: The Big Five", "Test 2: Administration Specialties"])
+    w, h = dimensiones_png(png)
+    assert w > 300 and h > 300 and abs(w / h - 1.0) < 0.6
+    if shutil.which("pdfimages"):
+        (tmp_path / "r.pdf").write_bytes(pdf_individual(alumno(), [TEST1, TEST2], resultados, FECHA))
+        salida = subprocess.run(["pdfimages", "-list", str(tmp_path / "r.pdf")], capture_output=True, text=True).stdout
+        fila = [l for l in salida.splitlines() if " image " in l][0].split()
+        x_ppi, y_ppi = float(fila[12]), float(fila[13])
+        assert abs(x_ppi - y_ppi) / x_ppi < 0.02  # sin estirar
+
+
+def test_el_pdf_imprime_nombres_fuera_de_windows_1252(resultados):
+    if not shutil.which("pdftotext"):
+        pytest.skip("pdftotext no está instalado")
+    from dataclasses import replace
+    raro = replace(alumno(), nombres="Łukasz Őrs ćšž", tutor="Dr. Ćirić")
+    pdf = pdf_individual(raro, [TEST1, TEST2], resultados, FECHA)
+    texto = subprocess.run(["pdftotext", "-layout", "-", "-"], input=pdf, capture_output=True, check=True).stdout.decode()
+    assert "Łukasz Őrs ćšž" in texto and "Dr. Ćirić" in texto and "■" not in texto
+
+
+def test_excel_tolera_caracteres_de_control_aunque_la_validacion_falle(resultados):
+    from dataclasses import replace
+    malo = replace(alumno(), nombres="Ana\x01\x08Mar\x1bía", tutor="Mtro.\x07 Ruiz")
+    wb = openpyxl.load_workbook(io.BytesIO(excel_individual(malo, [TEST1, TEST2], resultados, FECHA)))
+    valores = [c.value for f in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in f]
+    assert "AnaMaría Pérez López" in valores and "Mtro. Ruiz" in valores

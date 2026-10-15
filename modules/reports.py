@@ -13,6 +13,7 @@ import io
 from dataclasses import dataclass
 from datetime import datetime
 from fractions import Fraction
+from pathlib import Path
 from typing import Sequence
 from xml.sax.saxutils import escape
 
@@ -40,12 +41,20 @@ class VistaConjunta:
 
 
 def _seguro(texto: str) -> str:
-    """Evita que Excel interprete como fórmula un texto escrito por el alumno (=, +, -, @)."""
+    """Texto del alumno listo para una celda de Excel: sin caracteres que openpyxl rechaza y sin
+    que Excel lo interprete como fórmula (=, +, -, @)."""
+    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+    texto = ILLEGAL_CHARACTERS_RE.sub("", texto)
     return "'" + texto if texto.startswith(("=", "+", "-", "@", "\t", "\r")) else texto
 
 
 def pct(valor: Fraction | None) -> str:
-    return "Sin datos" if valor is None else f"{float(valor) * 100:.1f} %"
+    """Porcentaje con un decimal, redondeando .05 hacia arriba (igual que el formato 0.0 % de Excel;
+    f"{x:.1f}" redondea a par: 56.25 daría 56.2 en pantalla y 56.3 en el Excel)."""
+    if valor is None:
+        return "Sin datos"
+    decimas = int(valor * 1000 + Fraction(1, 2))  # valor >= 0: int() equivale a floor
+    return f"{decimas // 10}.{decimas % 10} %"
 
 
 def vista_conjunta(resultados: Sequence[ResultadoTest]) -> VistaConjunta | None:
@@ -102,6 +111,18 @@ def _notas(r: ResultadoTest) -> list[str]:
 
 # --------------------------------------------------------------------------- gráfica
 
+def puntos_radar(vc: VistaConjunta, i: int) -> list[tuple[int, float]]:
+    """(índice del eje, porcentaje) del test `i`, solo de las especialidades con dato.
+    "Sin datos" no se dibuja como 0 %: se omite el eje."""
+    return [(k, float(f.porcentajes[i]) * 100) for k, f in enumerate(vc.filas) if f.porcentajes[i] is not None]
+
+
+def dimensiones_png(png: bytes) -> tuple[int, int]:
+    """(ancho, alto) en píxeles leídos de la cabecera IHDR del PNG."""
+    import struct
+    return struct.unpack(">II", png[16:24])
+
+
 def grafica_radar(resultados: Sequence[ResultadoTest], titulos: Sequence[str]) -> bytes | None:
     """Radar con el porcentaje de cada test por especialidad común. None si no aplica."""
     vc = vista_conjunta(resultados)
@@ -117,10 +138,15 @@ def grafica_radar(resultados: Sequence[ResultadoTest], titulos: Sequence[str]) -
     angulos = [i / n * 2 * pi for i in range(n)] + [0]
     fig, ax = plt.subplots(figsize=(6.2, 5.2), subplot_kw={"projection": "polar"})
     for i, titulo in enumerate(titulos):
-        valores = [float(f.porcentajes[i]) * 100 if f.porcentajes[i] is not None else 0 for f in vc.filas]
+        puntos = puntos_radar(vc, i)
         color = COLORES[i % len(COLORES)]
-        ax.plot(angulos, valores + valores[:1], color=color, linewidth=2, label=titulo)
-        ax.fill(angulos, valores + valores[:1], color=color, alpha=0.12)
+        if len(puntos) < 2:  # con un solo eje no hay figura que dibujar
+            ax.plot([], [], color=color, linewidth=2, label=f"{titulo} (sin datos suficientes)")
+            continue
+        ang = [angulos[k] for k, _ in puntos] + [angulos[puntos[0][0]]]
+        val = [v for _, v in puntos] + [puntos[0][1]]
+        ax.plot(ang, val, color=color, linewidth=2, label=titulo)
+        ax.fill(ang, val, color=color, alpha=0.12)
     ax.set_xticks(angulos[:-1])
     ax.set_xticklabels([e.replace(" ", "\n", 1) if len(e) > 14 else e for e in etiquetas], fontsize=8)
     ax.set_ylim(0, 100)
@@ -135,6 +161,22 @@ def grafica_radar(resultados: Sequence[ResultadoTest], titulos: Sequence[str]) -
 
 # --------------------------------------------------------------------------- PDF
 
+def _registrar_fuentes() -> tuple[str, str]:
+    """(normal, negrita). DejaVu Sans viene con matplotlib y cubre acentos y alfabetos latino,
+    cirílico y griego; Helvetica (la de reportlab) imprime '■' fuera de Windows-1252."""
+    try:
+        import matplotlib
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        carpeta = Path(matplotlib.get_data_path()) / "fonts" / "ttf"
+        if "DejaVuSans" not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont("DejaVuSans", str(carpeta / "DejaVuSans.ttf")))
+            pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", str(carpeta / "DejaVuSans-Bold.ttf")))
+        return "DejaVuSans", "DejaVuSans-Bold"
+    except Exception:
+        return "Helvetica", "Helvetica-Bold"
+
+
 def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence[ResultadoTest],
                    fecha: datetime) -> bytes:
     from reportlab.lib import colors
@@ -145,11 +187,14 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
 
     azul = colors.HexColor(COLORES[0])
     base = getSampleStyleSheet()
-    h1 = ParagraphStyle("h1", parent=base["Title"], fontSize=18, textColor=azul, spaceAfter=4)
-    h2 = ParagraphStyle("h2", parent=base["Heading2"], textColor=azul, spaceBefore=12, spaceAfter=4)
-    cuerpo = ParagraphStyle("c", parent=base["BodyText"], fontSize=9.5, leading=13)
+    normal, negrita = _registrar_fuentes()
+    h1 = ParagraphStyle("h1", parent=base["Title"], fontName=negrita, fontSize=18, textColor=azul, spaceAfter=4)
+    h2 = ParagraphStyle("h2", parent=base["Heading2"], fontName=negrita, textColor=azul, spaceBefore=12,
+                        spaceAfter=4)
+    h3 = ParagraphStyle("h3", parent=base["Heading3"], fontName=negrita)
+    cuerpo = ParagraphStyle("c", parent=base["BodyText"], fontName=normal, fontSize=9.5, leading=13)
     chico = ParagraphStyle("s", parent=cuerpo, fontSize=8.5, textColor=colors.HexColor("#555555"))
-    celda = ParagraphStyle("t", parent=cuerpo, fontSize=8.5, leading=10.5)
+    celda = ParagraphStyle("t", parent=cuerpo, fontSize=8, leading=10.5)
 
     def p(texto, estilo=cuerpo):
         return Paragraph(escape(texto), estilo)
@@ -166,7 +211,7 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         return t
 
     ancho = letter[0] - 4 * cm
-    historia = [p("Evaluación Diagnóstica FCA", h1), p("Reporte de resultados", base["Heading3"]),
+    historia = [p("Evaluación Diagnóstica FCA", h1), p("Reporte de resultados", h3),
                 tabla([["Alumno", alumno.nombre_completo], ["Matrícula", alumno.matricula],
                        ["Edad", str(alumno.edad)], ["Tutor / orientador", alumno.tutor],
                        ["Fecha", fecha.strftime("%d/%m/%Y")]], [4 * cm, ancho - 4 * cm], cabecera=False),
@@ -194,7 +239,8 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         historia.append(p("El promedio solo considera los tests con dato y es orientativo.", chico))
         png = grafica_radar(resultados, [t.titulo for t in tests])
         if png:
-            historia += [Spacer(1, 6), Image(io.BytesIO(png), width=12.5 * cm, height=10.5 * cm)]
+            w_px, h_px = dimensiones_png(png)
+            historia += [Spacer(1, 6), Image(io.BytesIO(png), width=12.5 * cm, height=12.5 * cm * h_px / w_px)]
 
     for t, r in zip(tests, resultados):
         historia.append(p(t.titulo, h2))

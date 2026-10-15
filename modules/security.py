@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 
 # Límites de intentos fallidos de acceso (matrícula ajena), en una ventana deslizante.
 # Por matrícula: estricto. Por cliente (IP): holgado, porque en un salón de 30 a 40
@@ -19,8 +20,10 @@ EDAD_MAXIMA = 99
 
 
 def normalizar_texto(valor: str) -> str:
-    """Quita espacios sobrantes (inicio, fin y repetidos)."""
-    return " ".join(valor.split())
+    """Quita caracteres de control (p. ej. al pegar desde una terminal o un PDF) y los espacios
+    sobrantes. Un carácter de control en un nombre rompería la generación del Excel."""
+    sin_control = "".join(ch for ch in valor if ch.isspace() or unicodedata.category(ch) != "Cc")
+    return " ".join(sin_control.split())
 
 
 def normalizar_matricula(valor: str) -> str:

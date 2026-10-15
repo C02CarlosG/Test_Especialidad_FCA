@@ -37,3 +37,13 @@ def test_clave_cliente_no_guarda_la_ip():
     k = sec.clave_cliente("203.0.113.9")
     assert k.startswith("ip:") and "203" not in k
     assert k == sec.clave_cliente(" 203.0.113.9 ")
+
+
+def test_los_caracteres_de_control_se_eliminan_antes_de_validar():
+    v, e = sec.validar_datos("Pérez", "López", "Ana\x01 Mar\x1bía\x08", "123456", 20, "Mtro.\x07 Ruiz")
+    assert e == {} and v["nombres"] == "Ana María" and v["tutor"] == "Mtro. Ruiz"
+
+
+def test_un_nombre_solo_de_control_es_invalido():
+    _, e = sec.validar_datos("\x01\x02", "López", "Ana", "123456", 20, "Tutor X")
+    assert "apellido_paterno" in e
