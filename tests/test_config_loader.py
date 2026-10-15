@@ -3,9 +3,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from modules.config_loader import ConfigError, load_test_config
+from modules.config_loader import ConfigError, load_all_tests, load_test_config
 
-EJEMPLO = Path(__file__).resolve().parent.parent / "config" / "test.xlsx"
+CARPETA = Path(__file__).resolve().parent.parent / "config" / "tests"
+EJEMPLO = CARPETA / "test_1_ejemplo.xlsx"
 
 
 def _escribir(ruta, esp=None, pre=None, esc=None, omitir=()):
@@ -41,6 +42,8 @@ def test_ejemplo_valido():
     assert len(cfg.preguntas_de_bloque(1)) == 10
     assert sum(p.invertida for p in cfg.preguntas) == 2
     assert all("EJEMPLO" in e.nombre for e in cfg.especialidades)
+    assert cfg.id == "test_1_ejemplo"
+    assert cfg.titulo == "EJEMPLO - Test 1: Intereses"
 
 
 def test_valido_minimo(tmp_path):
@@ -121,3 +124,39 @@ def test_reporta_todos_los_errores_juntos(tmp_path):
     with pytest.raises(ConfigError) as exc:
         load_test_config(_escribir(tmp_path / "t.xlsx", pre=pre))
     assert len(exc.value.errores) >= 3
+
+
+def test_titulo_por_defecto_es_el_id(tmp_path):
+    cfg = load_test_config(_escribir(tmp_path / "mi_test.xlsx"))
+    assert (cfg.id, cfg.titulo) == ("mi_test", "mi_test")
+
+
+def test_nombre_de_archivo_invalido(tmp_path):
+    assert "Nombre de archivo inválido" in _errores(_escribir(tmp_path / "Test Uno.xlsx"))
+
+
+def test_carga_los_tres_tests_en_orden():
+    tests = load_all_tests(CARPETA)
+    assert [t.id for t in tests] == ["test_1_ejemplo", "test_2_ejemplo", "test_3_ejemplo"]
+    assert len({t.version for t in tests}) == 3
+
+
+def test_carpeta_vacia(tmp_path):
+    with pytest.raises(ConfigError, match="No hay archivos"):
+        load_all_tests(tmp_path)
+
+
+def test_errores_de_varios_archivos_indican_cual(tmp_path):
+    _escribir(tmp_path / "test_1.xlsx")
+    _escribir(tmp_path / "test_2.xlsx", esc=[(1, "a")])
+    _escribir(tmp_path / "test_3.xlsx", pre=[("P1", 1, "t", "ZZZ", "NO")])
+    with pytest.raises(ConfigError) as exc:
+        load_all_tests(tmp_path)
+    msg = "\n".join(exc.value.errores)
+    assert "[test_2.xlsx]" in msg and "[test_3.xlsx]" in msg and "[test_1.xlsx]" not in msg
+
+
+def test_ignora_archivos_temporales_de_excel(tmp_path):
+    _escribir(tmp_path / "test_1.xlsx")
+    (tmp_path / "~$test_1.xlsx").write_text("lock")
+    assert [t.id for t in load_all_tests(tmp_path)] == ["test_1"]

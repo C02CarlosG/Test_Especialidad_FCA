@@ -1,14 +1,21 @@
-"""Carga y validación de config/test.xlsx.
+"""Carga y validación de los tests definidos en config/tests/*.xlsx.
 
-El archivo define el test sin tocar código. Hojas requeridas:
+Hay un archivo .xlsx por test. El alumno los contesta en orden fijo: el orden
+alfabético del nombre de archivo (test_1_*.xlsx, test_2_*.xlsx, ...). El id del
+test es el nombre del archivo sin extensión.
+
+Hojas requeridas en cada archivo:
   - especialidades: codigo, nombre, descripcion, perfil_profesional
   - preguntas:      id, bloque, texto, especialidad_codigo, invertida (SI/NO)
   - escala:         valor, etiqueta
+Hoja opcional:
+  - info:           clave, valor   (clave 'titulo' = nombre visible del test)
 Si algo está mal formado, se lanza ConfigError con TODOS los problemas encontrados.
 """
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,12 +28,15 @@ HOJAS_REQUERIDAS: dict[str, list[str]] = {
 }
 
 
+ID_TEST_VALIDO = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
+
+
 class ConfigError(Exception):
     """El archivo de configuración del test no es válido."""
 
     def __init__(self, errores: list[str]) -> None:
         self.errores = errores
-        super().__init__("test.xlsx inválido:\n- " + "\n- ".join(errores))
+        super().__init__("Configuración de test inválida:\n- " + "\n- ".join(errores))
 
 
 @dataclass(frozen=True)
@@ -54,6 +64,8 @@ class OpcionEscala:
 
 @dataclass(frozen=True)
 class TestConfig:
+    id: str  # nombre del archivo sin extensión; se guarda en la BD con cada respuesta
+    titulo: str
     especialidades: tuple[Especialidad, ...]
     preguntas: tuple[Pregunta, ...]
     escala: tuple[OpcionEscala, ...]
@@ -104,6 +116,12 @@ def _duplicados(valores: list[str]) -> list[str]:
 
 def load_test_config(ruta: str | Path) -> TestConfig:
     ruta = Path(ruta)
+    test_id = ruta.stem.lower()
+    if not ID_TEST_VALIDO.match(test_id):
+        raise ConfigError([
+            f"Nombre de archivo inválido '{ruta.name}': usa minúsculas, números, '_' o '-' "
+            "(p. ej. test_1_intereses.xlsx)."
+        ])
     if not ruta.is_file():
         raise ConfigError([f"No se encontró el archivo {ruta}"])
     contenido = ruta.read_bytes()
@@ -124,6 +142,15 @@ def load_test_config(ruta: str | Path) -> TestConfig:
             errores.append(f"La hoja '{hoja}' no tiene las columnas: {', '.join(faltan)}.")
     if errores:  # sin estructura básica no tiene caso validar contenido
         raise ConfigError(errores)
+
+    titulo = test_id
+    if "info" in hojas:
+        info = hojas["info"]
+        info.columns = [str(c).strip().lower() for c in info.columns]
+        if {"clave", "valor"} <= set(info.columns):
+            for _, fila in info.iterrows():
+                if _texto(fila["clave"]).lower() == "titulo" and _texto(fila["valor"]):
+                    titulo = _texto(fila["valor"])
 
     # --- especialidades ---
     especialidades: list[Especialidad] = []
@@ -195,8 +222,37 @@ def load_test_config(ruta: str | Path) -> TestConfig:
         raise ConfigError(errores)
 
     return TestConfig(
+        id=test_id,
+        titulo=titulo,
         especialidades=tuple(especialidades),
         preguntas=tuple(preguntas),
         escala=tuple(escala),
         version=hashlib.sha256(contenido).hexdigest()[:16],
     )
+
+
+def load_all_tests(carpeta: str | Path) -> tuple[TestConfig, ...]:
+    """Carga todos los tests de la carpeta, en el orden en que los contestará el alumno.
+
+    Valida cada archivo y reporta los errores de todos juntos, con el nombre del archivo.
+    """
+    carpeta = Path(carpeta)
+    archivos = sorted(
+        p for p in carpeta.glob("*.xlsx") if not p.name.startswith(("~$", "."))
+    )
+    if not archivos:
+        raise ConfigError([f"No hay archivos .xlsx de tests en {carpeta}."])
+    tests: list[TestConfig] = []
+    errores: list[str] = []
+    for archivo in archivos:
+        try:
+            tests.append(load_test_config(archivo))
+        except ConfigError as exc:
+            errores.extend(f"[{archivo.name}] {e}" for e in exc.errores)
+    if errores:
+        raise ConfigError(errores)
+    for tid in _duplicados([t.id for t in tests]):
+        errores.append(f"Id de test repetido '{tid}'.")
+    if errores:
+        raise ConfigError(errores)
+    return tuple(tests)

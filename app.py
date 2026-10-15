@@ -6,7 +6,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from modules.config_loader import ConfigError, load_test_config
+from modules.config_loader import ConfigError, load_all_tests
 from modules.db import DBConfigError, crear_cliente, verificar_conexion
 
 RAIZ = Path(__file__).parent
@@ -15,13 +15,13 @@ st.set_page_config(page_title="Test de especialización", page_icon="🎓", layo
 st.title("Test de especialización")
 
 try:
-    cfg = load_test_config(RAIZ / "config" / "test.xlsx")
-    st.success(
-        f"Test cargado: {len(cfg.especialidades)} especialidades, "
-        f"{len(cfg.preguntas)} preguntas, escala {cfg.valor_min}-{cfg.valor_max}."
-    )
+    tests = load_all_tests(RAIZ / "config" / "tests")
+    st.success(f"{len(tests)} tests cargados (se contestan en este orden):")
+    for i, t in enumerate(tests, start=1):
+        st.write(f"{i}. **{t.titulo}**: {len(t.especialidades)} especialidades, "
+                 f"{len(t.preguntas)} preguntas, escala {t.valor_min}-{t.valor_max}.")
 except ConfigError as exc:
-    st.error("El archivo test.xlsx no es válido:")
+    st.error("Los archivos de config/tests no son válidos:")
     for e in exc.errores:
         st.write(f"- {e}")
 

@@ -88,3 +88,8 @@ Llenar las tres hojas de `config/test.xlsx`.
 Correr `pytest` y la validación del cargador.
 Hacer una prueba completa con 2 o 3 alumnos de prueba.
 Revisar el PDF resultante y ajustar las descripciones de cada especialidad.
+## Actualización: 3 tests por alumno
+- Hay 3 tests, uno por archivo en `config/tests/` (`test_1_*.xlsx`, `test_2_*.xlsx`, `test_3_*.xlsx`); el orden alfabético es el orden en que el alumno los contesta. Cada archivo conserva las hojas `especialidades`, `preguntas`, `escala` y admite una hoja opcional `info` (`titulo`).
+- Un solo QR y una sola URL; el código de grupo solo autoriza la entrada (`grupos.tests_habilitados` permite limitar qué tests hace un grupo).
+- Cada test se califica por separado (ranking, principal y secundaria). El PDF individual trae una sección por test y una gráfica final que relaciona los resultados de los tests (diseño a definir en la Fase 4). En el Excel de grupo, una hoja de resultados por test.
+- BD: `progreso_tests` (avance y versión por test), y `respuestas`/`resultados` llevan `test_id`.
