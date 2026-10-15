@@ -28,14 +28,52 @@ URL_EJEMPLO = "https://tu-app.streamlit.app"
 _ANCHO = '<style>[data-testid="stMainBlockContainer"] { max-width: 1200px; }</style>'
 
 
+def _reloj() -> dict:
+    """Plazo de la sesión en un dict mutable: las descargas diferidas corren en otro hilo, donde no
+    se puede leer st.session_state, pero sí este objeto."""
+    return st.session_state.setdefault("admin_reloj", {})
+
+
+def _cerrar_sesion() -> None:
+    _reloj()["hasta"] = 0  # también invalida las descargas que la pestaña aún tenga pendientes
+    for clave in ("admin_hasta", "panel", "panel_en"):  # no dejar datos de alumnos en memoria
+        st.session_state.pop(clave, None)
+
+
+def _iniciar_sesion() -> None:
+    hasta = time.time() + admin_auth.SESION_MINUTOS * 60
+    st.session_state["admin_hasta"] = hasta
+    _reloj()["hasta"] = hasta
+
+
 def _sesion_activa() -> bool:
     hasta = st.session_state.get("admin_hasta")
     if hasta is None or time.time() > hasta:
-        st.session_state.pop("admin_hasta", None)
-        st.session_state.pop("panel", None)  # no dejar datos de alumnos en memoria de una sesión vencida
+        _cerrar_sesion()
         return False
-    st.session_state["admin_hasta"] = time.time() + admin_auth.SESION_MINUTOS * 60  # se renueva al usarla
+    _iniciar_sesion()  # se renueva al usarla
     return True
+
+
+def _vigente(fn):
+    """Envuelve una descarga diferida: si la sesión venció mientras la pestaña seguía abierta, no
+    entrega nada. Usar la sesión la renueva, igual que cualquier otra acción."""
+    reloj = _reloj()
+
+    def envuelta():
+        if time.time() > reloj.get("hasta", 0):
+            raise PermissionError("La sesión del docente venció; vuelve a entrar.")
+        reloj["hasta"] = time.time() + admin_auth.SESION_MINUTOS * 60
+        return fn()
+    return envuelta
+
+
+@st.fragment(run_every=60)
+def _vigilante() -> None:
+    """Cada minuto comprueba (sin renovar) que la sesión siga vigente; si venció, limpia la pantalla."""
+    if time.time() > st.session_state.get("admin_hasta", 0):
+        _cerrar_sesion()
+        st.rerun()
 
 
 def _login(repo, esperada, cliente_ip: str) -> None:
@@ -56,7 +94,7 @@ def _login(repo, esperada, cliente_ip: str) -> None:
         log.exception("Error al validar el acceso del docente")
         st.error("No pudimos validar el acceso. Intenta de nuevo en un momento.")
     else:
-        st.session_state["admin_hasta"] = time.time() + admin_auth.SESION_MINUTOS * 60
+        _iniciar_sesion()
         st.rerun()
 
 
@@ -79,10 +117,13 @@ def _cargar(repo, tests: Sequence[TestConfig]) -> PanelDatos:
     if "panel" not in st.session_state:
         with st.spinner("Cargando alumnos…"):
             st.session_state["panel"] = cargar_panel(repo, tests)
+            st.session_state["panel_en"] = datetime.now(ZONA)
     return st.session_state["panel"]
 
 
 def _pestana_avance(panel: PanelDatos) -> None:
+    st.caption(f"Datos cargados a las {st.session_state['panel_en'].strftime('%H:%M')}. "
+               "Pulsa «Actualizar datos» para ver lo más reciente.")
     c1, c2, c3 = st.columns(3)
     c1.metric("Registrados", len(panel.filas))
     c2.metric("Terminaron todo", panel.terminados)
@@ -96,16 +137,16 @@ def _pestana_avance(panel: PanelDatos) -> None:
 
 
 def _pestana_descargas(repo, panel: PanelDatos) -> None:
-    fecha = datetime.now(ZONA)
+    fecha = st.session_state["panel_en"]  # los archivos llevan la hora real de los datos, no la del clic
     sello = fecha.strftime("%Y%m%d_%H%M")
     st.markdown("**Todos los alumnos**")
     c1, c2 = st.columns(2)
     c1.download_button("Excel concentrado (con respaldo de respuestas)",
-                       lambda: excel_concentrado(panel, fecha), file_name=f"concentrado_{sello}.xlsx",
+                       _vigente(lambda: excel_concentrado(panel, fecha)), file_name=f"concentrado_{sello}.xlsx",
                        mime=XLSX, type="primary", width="stretch", on_click="ignore",
                        disabled=not panel.filas)
     c2.download_button("ZIP con los PDF de quienes terminaron",
-                       lambda: zip_pdfs(panel, fecha)[0], file_name=f"pdfs_{sello}.zip", mime="application/zip",
+                       _vigente(lambda: zip_pdfs(panel, fecha)[0]), file_name=f"pdfs_{sello}.zip", mime="application/zip",
                        width="stretch", on_click="ignore",
                        disabled=not any(f.completo for f in panel.filas))
     st.caption("El concentrado trae una hoja por test y la hoja «Respuestas», que sirve de respaldo "
@@ -118,10 +159,10 @@ def _pestana_descargas(repo, panel: PanelDatos) -> None:
     else:
         elegido = st.selectbox("Alumno", completos, format_func=lambda f: f"{f.alumno.matricula} · {f.alumno.nombre_completo}")
         d1, d2 = st.columns(2)
-        d1.download_button("PDF", lambda: pdf_individual(elegido.alumno, panel.tests, list(elegido.resultados), fecha),
+        d1.download_button("PDF", _vigente(lambda: pdf_individual(elegido.alumno, panel.tests, list(elegido.resultados), fecha)),
                            file_name=nombre_pdf(elegido), mime="application/pdf", width="stretch",
                            on_click="ignore")
-        d2.download_button("Excel", lambda: excel_individual(elegido.alumno, panel.tests, list(elegido.resultados), fecha),
+        d2.download_button("Excel", _vigente(lambda: excel_individual(elegido.alumno, panel.tests, list(elegido.resultados), fecha)),
                            file_name=nombre_pdf(elegido).replace(".pdf", ".xlsx"), mime=XLSX,
                            width="stretch", on_click="ignore")
 
@@ -160,11 +201,11 @@ def render(repo, tests: Sequence[TestConfig], esperada: object, cliente_ip: str,
     st.title("Panel del docente")
     c1, c2 = st.columns([3, 1])
     if c2.button("Cerrar sesión", width="stretch"):
-        st.session_state.pop("admin_hasta", None)
-        st.session_state.pop("panel", None)
+        _cerrar_sesion()
         st.rerun()
     if c1.button("Actualizar datos"):
         st.session_state.pop("panel", None)
+    _vigilante()
     try:
         panel = _cargar(repo, tests)
     except Exception:

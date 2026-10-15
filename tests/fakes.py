@@ -26,6 +26,12 @@ class FakeRepo:
     def registrar_intento(self, tipo, clave):
         self.intentos.append((tipo, clave, self.reloj()))
 
+    def liberar_intento(self, tipo, clave):
+        for i in range(len(self.intentos) - 1, -1, -1):
+            if self.intentos[i][0] == tipo and self.intentos[i][1] == clave:
+                del self.intentos[i]
+                return
+
     def obtener_alumno_por_matricula(self, matricula):
         return self.alumnos.get(matricula)
 
@@ -70,8 +76,11 @@ class FakeRepo:
             por_alumno.setdefault(a, {})[t] = p
         return por_alumno
 
-    def obtener_respuestas_de_test(self, test_id):
-        return {a: dict(r) for (a, t), r in self.respuestas.items() if t == test_id}
+    def obtener_respuestas_todas(self):
+        por_test = {}
+        for (a, t), r in self.respuestas.items():
+            por_test.setdefault(t, {})[a] = dict(r)
+        return por_test
 
     def guardar_resultado(self, alumno_id, resultado, ahora):
         self.resultados_guardados.append((alumno_id, resultado.test_id, resultado.principal))

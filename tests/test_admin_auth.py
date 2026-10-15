@@ -78,3 +78,57 @@ def test_la_contraseña_vacia_o_parecida_no_entra():
 def test_contraseña_con_acentos_y_emoji():
     clave = "contraseña-ñandú-🔐-larga"
     aa.intentar_login(repo(), clave, clave, IP, AHORA)
+
+
+# ---- regresiones de la revisión independiente de la Fase 5 ----
+
+def test_el_intento_se_reserva_antes_de_comparar_la_contraseña():
+    """Contar -> comparar -> registrar dejaba pasar sesiones simultáneas por encima del tope."""
+    eventos = []
+
+    class Espia(FakeRepo):
+        def registrar_intento(self, tipo, clave):
+            eventos.append("registrar")
+            super().registrar_intento(tipo, clave)
+
+        def contar_intentos(self, tipo, clave, desde):
+            eventos.append("contar")
+            return super().contar_intentos(tipo, clave, desde)
+
+    r = Espia()
+    r.reloj = lambda: AHORA
+    with pytest.raises(aa.PasswordIncorrecta):
+        aa.intentar_login(r, "mala", CLAVE, IP, AHORA)
+    assert eventos.index("registrar") < eventos.index("contar")
+
+
+def test_intentos_simultaneos_no_superan_el_tope():
+    """N sesiones que a la vez ya reservaron su cupo: solo las primeras MAX_INTENTOS_CLIENTE comparan."""
+    r = repo()
+    clave = sec.clave_cliente(IP)
+    for _ in range(aa.MAX_INTENTOS_CLIENTE + 3):  # reservas hechas en paralelo antes de que nadie compare
+        r.registrar_intento("admin", clave)
+    with pytest.raises(aa.LoginBloqueado):
+        aa.intentar_login(r, CLAVE, CLAVE, IP, AHORA)  # aun con la contraseña buena
+
+
+def test_los_intentos_bloqueados_no_alargan_el_bloqueo():
+    r = repo()
+    for _ in range(aa.MAX_INTENTOS_CLIENTE):
+        with pytest.raises(aa.PasswordIncorrecta):
+            aa.intentar_login(r, "mala", CLAVE, IP, AHORA)
+    diez_min = AHORA + timedelta(minutes=10)
+    for _ in range(20):  # alguien insiste mientras está bloqueado
+        with pytest.raises(aa.LoginBloqueado):
+            aa.intentar_login(r, "mala", CLAVE, IP, diez_min)
+    # 16 min después del último FALLO real el docente entra: lo bloqueado no cuenta como intento
+    aa.intentar_login(r, CLAVE, CLAVE, IP, AHORA + timedelta(minutes=sec.VENTANA_INTENTOS_MIN + 1))
+
+
+def test_un_acierto_devuelve_su_reserva_y_no_reinicia_los_fallos_previos():
+    r = repo()
+    for _ in range(2):
+        with pytest.raises(aa.PasswordIncorrecta):
+            aa.intentar_login(r, "mala", CLAVE, IP, AHORA)
+    aa.intentar_login(r, CLAVE, CLAVE, IP, AHORA)
+    assert len(r.intentos) == 4  # 2 fallos x (cliente + global); el acierto no deja huella

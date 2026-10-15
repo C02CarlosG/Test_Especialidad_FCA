@@ -153,22 +153,24 @@ def excel_concentrado(panel: PanelDatos, fecha: datetime) -> bytes:
             ws.cell(i, c + 3, "Sí" if r.empate_tecnico else "No")
         ws.freeze_panes = "E2"
 
-    # --- Respuestas (respaldo en formato largo) ---
+    # --- Respuestas (respaldo en formato largo; trae TODO lo guardado, aunque el test ya no exista) ---
     ws = wb.create_sheet("Respuestas")
     encabezado(ws, 1, ["Matrícula", "Test", "Pregunta", "Respuesta"])
     por_id = {f.alumno.id: f.alumno for f in panel.filas}
+    en_config = [t.id for t in panel.tests]
     i = 1
-    for t in panel.tests:
-        orden = [p.id for p in t.preguntas]
-        for alumno_id, resp in panel.respuestas[t.id].items():
+    for test_id in en_config + sorted(set(panel.respuestas) - set(en_config)):
+        test = next((t for t in panel.tests if t.id == test_id), None)
+        orden = [p.id for p in test.preguntas] if test else []
+        for alumno_id, resp in panel.respuestas[test_id].items():
             if alumno_id not in por_id:
                 continue
-            for pid in orden:
+            for pid in orden + sorted(set(resp) - set(orden)):
                 if pid in resp:
                     i += 1
                     ws.cell(i, 1, _seguro(por_id[alumno_id].matricula))
-                    ws.cell(i, 2, t.id)
-                    ws.cell(i, 3, pid)
+                    ws.cell(i, 2, _seguro(test_id))
+                    ws.cell(i, 3, _seguro(pid))
                     ws.cell(i, 4, "SE" if resp[pid] is None else resp[pid])
     ws.freeze_panes = "A2"
 

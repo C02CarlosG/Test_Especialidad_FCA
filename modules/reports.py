@@ -44,7 +44,8 @@ def _seguro(texto: str) -> str:
     """Texto del alumno listo para una celda de Excel: sin caracteres que openpyxl rechaza y sin
     que Excel lo interprete como fórmula (=, +, -, @)."""
     from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-    texto = ILLEGAL_CHARACTERS_RE.sub("", texto)
+    from modules.security import limpiar_caracteres
+    texto = ILLEGAL_CHARACTERS_RE.sub("", limpiar_caracteres(texto))
     return "'" + texto if texto.startswith(("=", "+", "-", "@", "\t", "\r")) else texto
 
 

@@ -65,6 +65,13 @@ class SupabaseRepo:
     def registrar_intento(self, tipo: str, clave: str) -> None:
         self._c.table("intentos_fallidos").insert({"tipo": tipo, "clave": clave}).execute()
 
+    def liberar_intento(self, tipo: str, clave: str) -> None:
+        """Borra el intento más reciente de esa clave (devuelve una reserva)."""
+        r = (self._c.table("intentos_fallidos").select("id").eq("tipo", tipo).eq("clave", clave)
+             .order("id", desc=True).limit(1).execute())
+        if r.data:
+            self._c.table("intentos_fallidos").delete().eq("id", r.data[0]["id"]).execute()
+
     def obtener_alumno_por_matricula(self, matricula: str) -> Alumno | None:
         r = (self._c.table("alumnos").select(_COLS_ALUMNO)
              .eq("matricula", matricula).limit(1).execute())
@@ -142,17 +149,13 @@ class SupabaseRepo:
             por_alumno.setdefault(f["alumno_id"], {})[f["test_id"]] = ProgresoTest(f["estado"], f["version_test"])
         return por_alumno
 
-    def obtener_respuestas_de_test(self, test_id: str) -> dict[str, dict[str, int | None]]:
-        por_alumno: dict[str, dict[str, int | None]] = {}
-        pagina, desde = 1000, 0
-        while True:
-            lote = (self._c.table("respuestas").select("alumno_id,pregunta_id,valor").eq("test_id", test_id)
-                    .order("alumno_id").order("pregunta_id").range(desde, desde + pagina - 1).execute().data)
-            for f in lote:
-                por_alumno.setdefault(f["alumno_id"], {})[f["pregunta_id"]] = f["valor"]
-            desde += len(lote)
-            if len(lote) < pagina:
-                return por_alumno
+    def obtener_respuestas_todas(self) -> dict[str, dict[str, dict[str, int | None]]]:
+        """test_id -> alumno_id -> pregunta_id -> valor, de TODOS los tests (incluso los retirados)."""
+        por_test: dict[str, dict[str, dict[str, int | None]]] = {}
+        for f in self._todas("respuestas", "test_id,alumno_id,pregunta_id,valor",
+                             ("test_id", "alumno_id", "pregunta_id")):
+            por_test.setdefault(f["test_id"], {}).setdefault(f["alumno_id"], {})[f["pregunta_id"]] = f["valor"]
+        return por_test
 
     def guardar_resultado(self, alumno_id: str, resultado: ResultadoTest, ahora: datetime) -> None:
         puntajes, afinidad = resultado.a_json()

@@ -183,3 +183,12 @@ def test_excel_tolera_caracteres_de_control_aunque_la_validacion_falle(resultado
     wb = openpyxl.load_workbook(io.BytesIO(excel_individual(malo, [TEST1, TEST2], resultados, FECHA)))
     valores = [c.value for f in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in f]
     assert "AnaMaría Pérez López" in valores and "Mtro. Ruiz" in valores
+
+
+def test_excel_individual_con_no_caracteres_sigue_siendo_valido(resultados):
+    from dataclasses import replace
+    malo = replace(alumno(), nombres="Ana\ufffe\uffff", tutor="Mtro.\ufffe Ruiz")
+    xlsx = excel_individual(malo, [TEST1, TEST2], resultados, FECHA)
+    wb = openpyxl.load_workbook(io.BytesIO(xlsx))  # antes: ParseError por XML mal formado
+    valores = [c.value for f in wb["Resumen"].iter_rows(min_row=3, max_row=7) for c in f]
+    assert "Ana Pérez López" in valores and "Mtro. Ruiz" in valores

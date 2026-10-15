@@ -19,11 +19,16 @@ EDAD_MINIMA = 18
 EDAD_MAXIMA = 99
 
 
+def limpiar_caracteres(valor: str) -> str:
+    """Quita los caracteres que no deben llegar a la BD, a un PDF ni a un Excel: de control (Cc, p. ej.
+    al pegar desde una terminal), sustitutos sueltos (Cs) y sin asignar o no-caracteres (Cn, como
+    U+FFFE/U+FFFF, que dejan un XML mal formado). Los espacios y saltos se conservan."""
+    return "".join(ch for ch in valor if ch.isspace() or unicodedata.category(ch) not in ("Cc", "Cs", "Cn"))
+
+
 def normalizar_texto(valor: str) -> str:
-    """Quita caracteres de control (p. ej. al pegar desde una terminal o un PDF) y los espacios
-    sobrantes. Un carácter de control en un nombre rompería la generación del Excel."""
-    sin_control = "".join(ch for ch in valor if ch.isspace() or unicodedata.category(ch) != "Cc")
-    return " ".join(sin_control.split())
+    """Limpia caracteres no válidos y quita los espacios sobrantes (inicio, fin y repetidos)."""
+    return " ".join(limpiar_caracteres(valor).split())
 
 
 def normalizar_matricula(valor: str) -> str:

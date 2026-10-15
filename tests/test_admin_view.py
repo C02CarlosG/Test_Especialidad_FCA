@@ -113,3 +113,47 @@ def test_la_sesion_se_renueva_con_el_uso():
     at.session_state["admin_hasta"] = time.time() + 5
     at.run()
     assert at.session_state["admin_hasta"] > time.time() + 3000
+
+
+def _app_descarga():
+    import streamlit as st
+    from views import admin
+    st.session_state["envuelta"] = admin._vigente(lambda: "datos del docente")
+    st.session_state["sesion"] = admin._sesion_activa()
+
+
+def test_una_descarga_pendiente_no_entrega_nada_con_la_sesion_vencida():
+    """La descarga diferida corre sin re-ejecutar el script: debe revisar el plazo por su cuenta."""
+    at = AppTest.from_function(_app_descarga, default_timeout=30)
+    at.session_state["admin_hasta"] = time.time() + 600
+    at.run()
+    assert at.session_state["sesion"] is True
+    envuelta = at.session_state["envuelta"]
+    assert envuelta() == "datos del docente"
+    at.session_state["admin_reloj"]["hasta"] = time.time() - 1  # venció con la pestaña abierta
+    with pytest.raises(PermissionError, match="venció"):
+        envuelta()
+
+
+def test_cerrar_sesion_invalida_las_descargas_pendientes():
+    at = _entrar(_nuevo())
+    reloj = at.session_state["admin_reloj"]
+    assert reloj["hasta"] > time.time()
+    next(b for b in at.button if b.label == "Cerrar sesión").click().run()
+    assert reloj["hasta"] == 0 and "panel_en" not in at.session_state
+
+
+def test_usar_una_descarga_renueva_la_sesion():
+    at = AppTest.from_function(_app_descarga, default_timeout=30)
+    at.session_state["admin_hasta"] = time.time() + 600
+    at.run()
+    reloj = at.session_state["admin_reloj"]
+    reloj["hasta"] = time.time() + 5
+    at.session_state["envuelta"]()
+    assert reloj["hasta"] > time.time() + 3000
+
+
+def test_el_panel_muestra_desde_cuando_son_los_datos():
+    at = _entrar(_nuevo())
+    assert any(c.value.startswith("Datos cargados a las ") for c in at.caption)
+    assert at.session_state["panel_en"].tzinfo is not None

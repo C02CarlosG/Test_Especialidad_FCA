@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import re
 from urllib.parse import urlsplit
 
 import qrcode
@@ -14,13 +15,28 @@ class UrlInvalida(ValueError):
     """La URL no sirve para un QR público."""
 
 
+_ETIQUETA_DNS = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+_HOST_DNS = re.compile(rf"^(?:{_ETIQUETA_DNS}\.)+{_ETIQUETA_DNS}$")
+
+
 def validar_url(url: str) -> str:
     """Devuelve la URL limpia. Solo https (o http en localhost, para pruebas), sin espacios."""
     url = url.strip()
-    partes = urlsplit(url)
-    local = partes.hostname in ("localhost", "127.0.0.1", "::1")
-    if not url or any(c.isspace() for c in url) or not partes.hostname:
+    if not url or any(c.isspace() for c in url):
         raise UrlInvalida("Escribe una URL completa, sin espacios (p. ej. https://mi-app.streamlit.app).")
+    try:
+        partes = urlsplit(url)
+        partes.port  # noqa: B018  (lanza ValueError si el puerto es inválido)
+    except ValueError as exc:
+        raise UrlInvalida("La URL no es válida; revisa el host y el puerto (p. ej. https://mi-app.streamlit.app).") from exc
+    local = partes.hostname in ("localhost", "127.0.0.1", "::1")
+    if not partes.hostname:
+        raise UrlInvalida("Escribe una URL completa, sin espacios (p. ej. https://mi-app.streamlit.app).")
+    if not local and not (_HOST_DNS.match(partes.hostname) and len(partes.hostname) <= 253):
+        raise UrlInvalida("El nombre del sitio no es válido (p. ej. mi-app.streamlit.app).")
+    ruta = partes.path.lower().rstrip("/")
+    if ruta == "/admin" or ruta.startswith("/admin/"):
+        raise UrlInvalida("Esa es la dirección del panel del docente. Usa la dirección principal de la app.")
     if partes.scheme != "https" and not (partes.scheme == "http" and local):
         raise UrlInvalida("La URL debe empezar con https:// (los celulares avisan al abrir http://).")
     if not url.isascii():

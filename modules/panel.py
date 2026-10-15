@@ -18,7 +18,7 @@ from modules.scoring import ErrorDeCalificacion, ResultadoTest, calificar
 class RepositorioPanel(Protocol):
     def listar_alumnos(self) -> list[Alumno]: ...
     def obtener_progreso_todos(self) -> dict[str, dict[str, ProgresoTest]]: ...
-    def obtener_respuestas_de_test(self, test_id: str) -> dict[str, dict[str, int | None]]: ...
+    def obtener_respuestas_todas(self) -> dict[str, dict[str, dict[str, int | None]]]: ...
     def guardar_resultado(self, alumno_id: str, resultado: ResultadoTest, ahora: datetime) -> None: ...
 
 
@@ -38,7 +38,9 @@ class FilaAlumno:
 class PanelDatos:
     tests: tuple[TestConfig, ...]
     filas: tuple[FilaAlumno, ...]
-    respuestas: dict[str, dict[str, dict[str, int | None]]]  # test_id -> alumno_id -> pregunta_id -> valor
+    # test_id -> alumno_id -> pregunta_id -> valor. Incluye tests y preguntas que ya no están en la
+    # configuración: es el respaldo de la BD y no debe perder nada.
+    respuestas: dict[str, dict[str, dict[str, int | None]]]
     problemas: tuple[str, ...]  # avisos para el docente (versiones distintas, respuestas incompletas)
 
     @property
@@ -49,7 +51,8 @@ class PanelDatos:
 def cargar_panel(repo: RepositorioPanel, tests: Sequence[TestConfig]) -> PanelDatos:
     alumnos = repo.listar_alumnos()
     progreso = repo.obtener_progreso_todos()
-    respuestas = {t.id: repo.obtener_respuestas_de_test(t.id) for t in tests}
+    todas = repo.obtener_respuestas_todas()
+    respuestas = {**todas, **{t.id: todas.get(t.id, {}) for t in tests}}
     problemas: list[str] = []
     filas = []
     for a in alumnos:

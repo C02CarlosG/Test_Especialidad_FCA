@@ -47,3 +47,20 @@ def test_los_caracteres_de_control_se_eliminan_antes_de_validar():
 def test_un_nombre_solo_de_control_es_invalido():
     _, e = sec.validar_datos("\x01\x02", "López", "Ana", "123456", 20, "Tutor X")
     assert "apellido_paterno" in e
+
+
+@pytest.mark.parametrize("sucio,limpio", [
+    ("Ab\ufffe\uffffC", "AbC"),          # no-caracteres: dejan XML mal formado en el Excel
+    ("Ana\ud800 Mar\udfffía", "Ana María"),  # sustitutos sueltos
+    ("Ana\u0378Pérez", "AnaPérez"),       # sin asignar (Cn)
+    ("Ana\x00\x01 María", "Ana María"),  # control
+    ("José  Ñandú\t Díaz", "José Ñandú Díaz"),
+    ("Ana\u200dMaría", "Ana\u200dMaría"),   # formato (ZWJ) se conserva
+])
+def test_normalizar_texto_quita_caracteres_no_validos(sucio, limpio):
+    assert sec.normalizar_texto(sucio) == limpio
+
+
+def test_un_nombre_con_no_caracteres_se_guarda_limpio():
+    v, e = sec.validar_datos("Pérez\ufffe", "López", "Ana\uffff", "123456", 20, "Mtro. \ufffeRuiz")
+    assert e == {} and (v["apellido_paterno"], v["nombres"], v["tutor"]) == ("Pérez", "Ana", "Mtro. Ruiz")

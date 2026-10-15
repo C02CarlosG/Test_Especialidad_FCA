@@ -111,3 +111,23 @@ def test_zip_sin_nadie_terminado_solo_trae_el_leeme():
     assert incluidos == 0 and omitidos == 4
     with zipfile.ZipFile(io.BytesIO(datos)) as z:
         assert z.namelist() == ["LEEME.txt"]
+
+
+def test_el_respaldo_incluye_respuestas_de_tests_y_preguntas_que_ya_no_estan_en_la_configuracion():
+    repo = poblar()
+    repo.respuestas[("a1", "test_retirado")] = {"R01": 3, "R02": None}              # test que ya no existe
+    repo.respuestas[("a1", TEST1.id)]["BF_VIEJA"] = 4                              # pregunta que ya no existe
+    panel = cargar_panel(repo, (TEST1, TEST2))
+    ws = openpyxl.load_workbook(io.BytesIO(excel_concentrado(panel, FECHA)))["Respuestas"]
+    filas = {tuple(c.value for c in f) for f in ws.iter_rows(min_row=2)}
+    assert ("100001", "test_retirado", "R01", 3) in filas and ("100001", "test_retirado", "R02", "SE") in filas
+    assert ("100001", TEST1.id, "BF_VIEJA", 4) in filas
+    total = sum(len(r) for t in repo.obtener_respuestas_todas().values() for r in t.values())
+    assert len(filas) == total  # nada se pierde
+
+
+def test_panel_y_calificacion_ignoran_tests_retirados():
+    repo = poblar()
+    repo.respuestas[("a1", "test_retirado")] = {"R01": 3}
+    panel = cargar_panel(repo, (TEST1, TEST2))
+    assert panel.filas[0].completo and "test_retirado" in panel.respuestas
