@@ -1,9 +1,10 @@
 /* Tipografías autoalojadas (./static/fonts, sin servidores de terceros): Fraunces para títulos y cifras,
-   Plus Jakarta Sans para el texto corrido. */
+   Plus Jakarta Sans para el texto corrido. La ruta es RELATIVA (sin "/" inicial): en Streamlit Cloud la app
+   vive bajo "/~/+/" y una ruta absoluta apuntaría fuera de ella. Si no cargan, se usan fuentes del sistema. */
 @font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 100 900; font-display: swap;
-  src: url('/app/static/fonts/fraunces-latin-wght-normal.woff2') format('woff2'); }
+  src: url('app/static/fonts/fraunces-latin-wght-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 200 800; font-display: swap;
-  src: url('/app/static/fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); }
+  src: url('app/static/fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); }
 
 /* Identidad visual: azul marino + oro. El oro solo aparece en el camino de pasos, la barra de avance
    y el subrayado del resultado; las acciones y la opción elegida van en marino. */

@@ -5,6 +5,7 @@ Plus Jakarta Sans) van autoalojadas en ./static/fonts: no se carga nada de servi
 """
 from __future__ import annotations
 
+import base64
 from fractions import Fraction
 from functools import lru_cache
 from html import escape
@@ -15,10 +16,12 @@ import streamlit as st
 
 INSTITUCION = "Facultad de Contaduría y Administración"
 UNIVERSIDAD = "Universidad Autónoma Benito Juárez de Oaxaca"
-# Los logos viven en ./static y se sirven con enableStaticServing (config.toml): el navegador los
-# guarda en caché y no se reenvían en cada recarga de la página.
-LOGO_FCA = ("/app/static/logo_fca.png", 165, 240, "Facultad de Contaduría y Administración, Calidad Académica")
-LOGO_UABJO = ("/app/static/logo_uabjo.png", 204, 240, "Universidad Autónoma Benito Juárez de Oaxaca, 1955, Ciencia, Arte, Libertad")
+# Los logos (./static) van incrustados en el HTML como data URI: así se ven igual en local, en Streamlit
+# Cloud (donde la app corre bajo una ruta distinta y una ruta absoluta hacia la carpeta static da 404) y detrás de
+# cualquier proxy. Pesan ~21 KB en total.
+RAIZ = Path(__file__).resolve().parent.parent
+LOGO_FCA = ("logo_fca.png", 165, 240, "Facultad de Contaduría y Administración, Calidad Académica")
+LOGO_UABJO = ("logo_uabjo.png", 204, 240, "Universidad Autónoma Benito Juárez de Oaxaca, 1955, Ciencia, Arte, Libertad")
 
 
 @lru_cache(maxsize=1)
@@ -31,9 +34,14 @@ def aplicar() -> None:
     st.html(f"<style>{_css()}</style>")
 
 
+@lru_cache(maxsize=None)
+def _data_uri(archivo: str) -> str:
+    return "data:image/png;base64," + base64.b64encode((RAIZ / "static" / archivo).read_bytes()).decode()
+
+
 def _logo(clase: str, logo: tuple) -> str:
-    url, ancho, alto, alt = logo
-    return f'<img class="logo {clase}" src="{url}" width="{ancho}" height="{alto}" alt="{escape(alt)}">'
+    archivo, ancho, alto, alt = logo
+    return f'<img class="logo {clase}" src="{_data_uri(archivo)}" width="{ancho}" height="{alto}" alt="{escape(alt)}">'
 
 
 def _marca() -> str:

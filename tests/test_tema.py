@@ -37,7 +37,8 @@ def test_el_camino_marca_hecho_actual_y_pendiente():
     assert h2.count('aria-current="step"') == 1 and "Registro" in h2 and "Test 1" in h2 and "Resultados" in h2
     assert 'aria-label="Progreso de la evaluación"' in h0 and "Facultad de Contaduría y Administración" in h0
     # un logo a cada lado: FCA a la izquierda y UABJO a la derecha, con texto alternativo
-    assert h0.index("logo_fca.png") < h0.index('class="inst"') < h0.index("logo_uabjo.png")
+    assert h0.index('class="logo fca"') < h0.index('class="inst"') < h0.index('class="logo uabjo"')
+    assert h0.count('src="data:image/png;base64,') == 2  # incrustados: no dependen de rutas del servidor
     assert 'alt="Facultad de Contaduría y Administración, Calidad Académica"' in h0
     assert "Universidad Autónoma Benito Juárez de Oaxaca" in h0
 
@@ -94,15 +95,29 @@ def test_el_tema_define_la_paleta_y_oculta_la_barra_de_streamlit():
     assert "googleapis" not in str(cfg) and "http" not in cfg["theme"]["font"]  # sin fuentes de terceros
 
 
-def test_los_logos_existen_son_ligeros_y_se_sirven_como_archivos_estaticos():
-    import tomllib
+def test_los_logos_existen_son_ligeros_y_van_incrustados():
+    import base64
     from PIL import Image
     from views import tema
-    for url, ancho, alto, _alt in (tema.LOGO_FCA, tema.LOGO_UABJO):
-        archivo = RAIZ / "static" / url.rsplit("/", 1)[1]
-        assert archivo.is_file() and archivo.stat().st_size < 60_000
-        im = Image.open(archivo)
+    for archivo, ancho, alto, _alt in (tema.LOGO_FCA, tema.LOGO_UABJO):
+        ruta = RAIZ / "static" / archivo
+        assert ruta.is_file() and ruta.stat().st_size < 60_000
+        im = Image.open(ruta)
         assert im.size == (ancho, alto)  # width/height del HTML = tamaño real: sin saltos al cargar
-        assert "A" in im.convert("RGBA").getbands() and im.convert("RGBA").getchannel("A").getextrema()[0] == 0  # fondo transparente
+        assert im.convert("RGBA").getchannel("A").getextrema()[0] == 0  # fondo transparente
+        assert tema._data_uri(archivo) == "data:image/png;base64," + base64.b64encode(ruta.read_bytes()).decode()
+
+
+def test_ninguna_ruta_estatica_es_absoluta():
+    """En Streamlit Cloud la app corre bajo "/~/+/": un "/app/static/..." absoluto da 404 (logos rotos y
+    fuentes que no cargan). Las rutas deben ser relativas ("app/static/...") o ir incrustadas."""
+    import tomllib
+    for archivo in [*(RAIZ / "views").glob("*.py"), *(RAIZ / "views").glob("*.css"), RAIZ / "app.py"]:
+        texto = archivo.read_text(encoding="utf-8")
+        assert not re.search(r"""["'(]/app/static""", texto), f"ruta absoluta en {archivo.name}"
+    css = (RAIZ / "views" / "tema.css").read_text(encoding="utf-8")
+    fuentes = re.findall(r"url\('([^']+)'\)", css)
+    assert fuentes and all(f.startswith("app/static/fonts/") for f in fuentes)
+    assert all((RAIZ / "static" / "fonts" / f.rsplit("/", 1)[1]).is_file() for f in fuentes)
     cfg = tomllib.loads((RAIZ / ".streamlit" / "config.toml").read_text())
-    assert cfg["server"]["enableStaticServing"] is True and url.startswith("/app/static/")
+    assert cfg["server"]["enableStaticServing"] is True

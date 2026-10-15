@@ -173,7 +173,7 @@ truncate public.resultados, public.respuestas, public.progreso_tests,
 | Un alumno quedó bloqueado por un cambio en el test | El test cambió mientras contestaba (ver «Los tests»). Si es necesario, bórralo con el SQL de arriba para que repita. |
 | Un alumno no pudo descargar sus resultados | Descárgalos tú desde `/admin → Descargas → Un alumno`. |
 | La app tarda en responder | Probablemente estaba dormida; espera unos segundos y recarga. |
-| No cargan los logos | Revisa que `.streamlit/config.toml` tenga `enableStaticServing = true` y que exista la carpeta `static/`. |
+| No cargan los logos o las tipografías | Los logos van incrustados en la página; las tipografías se sirven desde `static/fonts` con ruta **relativa** (`app/static/…`) y `enableStaticServing = true` en `.streamlit/config.toml`. Una ruta que empiece con `/app/static` falla en Streamlit Cloud. |
 
 ## Estructura del proyecto
 
