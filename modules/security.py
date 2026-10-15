@@ -28,7 +28,8 @@ def normalizar_matricula(valor: str) -> str:
 
 
 def _nombre_ok(valor: str) -> bool:
-    return 1 <= len(valor) <= 80 and any(c.isalpha() for c in valor)
+    # Debe empezar con letra: así un nombre nunca se interpreta como fórmula al abrirlo en Excel.
+    return 1 <= len(valor) <= 80 and valor[0].isalpha()
 
 
 def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,

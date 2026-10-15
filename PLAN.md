@@ -106,3 +106,14 @@ Revisar el PDF resultante y ajustar las descripciones de cada especialidad.
 - Opción "SE" (sin experiencia) del test 2: cuenta como respuesta y se guarda como `valor` NULL (0 y NULL son distintos). Su tratamiento en el puntaje es de la Fase 4.
 - El avance vive en la BD. Si recarga la página, vuelve a entrar con matrícula y nombre y continúa en el primer bloque sin contestar. Si el .xlsx de un test cambia a mitad de la aplicación, el alumno en curso ve un aviso (se compara el hash `version_test`).
 - Al terminar, el alumno no ve su resultado (solo el docente).
+
+## Actualización: Fase 4 (calificación y reportes del alumno)
+- **El alumno ve y exporta sus resultados al terminar** (PDF y Excel), para decidir qué especialidad le conviene. Sustituye la decisión anterior "resultado visible al alumno: No". Se puede apagar con `[app] MOSTRAR_RESULTADO_AL_ALUMNO = false` en los secrets. Los archivos se generan en memoria y no se guardan; al cerrar la página el alumno ya no puede volver a consultarlos (su matrícula queda "terminada").
+- `modules/scoring.py` replica las calculadoras de Excel (docs/referencia) y se verifica contra ellas con 253 casos recalculados en LibreOffice (`scripts/generar_golden_scoring.py` → `tests/golden/`). Reglas:
+  - Porcentaje = obtenido / (respuestas contestadas x valor máximo de la escala). Preguntas invertidas: `min + max - respuesta`.
+  - "SE": no suma al puntaje ni al máximo; 2 o más "SE" en una especialidad = "requiere explorar"; si todas son "SE" no hay dato y queda fuera del ranking (la calculadora la mostraba como 0 %).
+  - Ranking: mayor porcentaje, luego mayor puntaje bruto, luego orden del Excel. Principal y secundaria solo si hay al menos 2 con dato. Empate técnico: 5 puntos porcentuales o menos entre las dos primeras.
+  - Test 1 (Big Five): se califica por dimensión y se calcula la afinidad con cada especialidad (p. ej. Mercadotecnia = Apertura + Extraversión) con las mismas fórmulas; la 1ª y 2ª opción salen de esa afinidad.
+- Los niveles (Alto/Medio/...) y las afinidades derivadas viven en el Excel de cada test (hojas opcionales `niveles` y `afinidad`). La versión del test (`version_test`) ahora solo depende de preguntas y escala: corregir descripciones o umbrales no invalida avances en curso.
+- **Vista conjunta (provisional):** las especialidades de la carrera comparten código entre tests (MKT, CH, AF, NI, EMP). El reporte las compara lado a lado, promedia los tests con dato y dibuja un radar con un color por test. El diseño definitivo de la gráfica sigue pendiente.
+- Pendiente de la Fase 4: Excel concentrado y ZIP para el docente (dependen de cómo se agrupen los reportes sin grupos) y guardar resultados en la tabla `resultados`.

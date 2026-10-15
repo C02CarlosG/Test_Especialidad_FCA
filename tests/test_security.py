@@ -21,7 +21,7 @@ def test_datos_validos_se_normalizan():
     ("matricula", ""), ("matricula", "12345"), ("matricula", "1234567"), ("matricula", "12345a"),
     ("matricula", "12 456"), ("matricula", "12-456"), ("matricula", "١٢٣٤٥٦"),
     ("edad", None), ("edad", 17), ("edad", 0), ("edad", 100),
-    ("tutor", ""), ("tutor", "..."),
+    ("tutor", ""), ("tutor", "..."), ("tutor", "=HYPERLINK(1)"), ("nombres", "+52 Ana"), ("apellido_paterno", "@x"),
 ])
 def test_campos_invalidos(campo, valor):
     _, errores = sec.validar_datos(**{**BASE, campo: valor})

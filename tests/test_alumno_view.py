@@ -16,6 +16,17 @@ def _app():
     alumno.render(st.session_state["repo"], tests, "Aviso de prueba", "203.0.113.9")
 
 
+def _app_sin_resultados():
+    import streamlit as st
+    from fakes import FakeRepo, crear_test
+    from views import alumno
+
+    if "repo" not in st.session_state:
+        st.session_state["repo"] = FakeRepo()
+    alumno.render(st.session_state["repo"], (crear_test("t1", 10),), "Aviso", "203.0.113.9",
+                  mostrar_resultados=False)
+
+
 def _nuevo():
     return AppTest.from_function(_app, default_timeout=30).run()
 
@@ -88,6 +99,10 @@ def test_flujo_completo_hasta_la_pantalla_final():
     assert at.radio[0].options[-1] == "Sin experiencia"      # opción SE al final de la escala
     _contestar_todo(at, "SE").button[0].click().run()          # todo "SE"; termina t2
     assert not at.radio and "Terminaste" in at.success[0].value
+    assert not at.exception and not at.error
+    assert "Tus resultados" in [h.value for h in at.subheader]
+    botones = at.get("download_button")
+    assert [b.proto.label for b in botones] == ["Descargar PDF", "Descargar Excel"]
 
 
 def test_recargar_conserva_el_avance():
@@ -102,3 +117,11 @@ def test_recargar_conserva_el_avance():
     assert "Bienvenida" not in nueva.success[0].value and "bienvenida de nuevo" in nueva.success[0].value
     assert "Bloque 2 de 2" in nueva.get("progress")[0].proto.text
     assert len(nueva.radio) == 2
+
+
+def test_si_no_se_muestran_resultados_solo_agradece():
+    at = AppTest.from_function(_app_sin_resultados, default_timeout=30).run()
+    _llenar(at)
+    _contestar_todo(at, "3").button[0].click().run()
+    assert "Terminaste" in at.success[0].value
+    assert not at.get("download_button") and "Tus resultados" not in [h.value for h in at.subheader]

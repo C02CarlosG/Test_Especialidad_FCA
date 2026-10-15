@@ -44,4 +44,9 @@ except (ConfigError, DBConfigError, FileNotFoundError):
     st.error("El test no está disponible por el momento. Avisa a tu docente.")
 else:
     aviso = (RAIZ / "config" / "aviso_privacidad.md").read_text(encoding="utf-8")
-    alumno.render(repo, tests, aviso, _cliente_ip())
+    # El alumno ve y descarga sus resultados al terminar, salvo que [app] MOSTRAR_RESULTADO_AL_ALUMNO = false.
+    try:
+        mostrar = bool(st.secrets["app"]["MOSTRAR_RESULTADO_AL_ALUMNO"])
+    except Exception:
+        mostrar = True
+    alumno.render(repo, tests, aviso, _cliente_ip(), mostrar)

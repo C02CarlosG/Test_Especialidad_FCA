@@ -42,7 +42,8 @@ create table if not exists public.resultados (
     test_id                 text not null,
     puntajes                jsonb not null,
     afinidad                jsonb not null,
-    especialidad_principal  text not null,
+    -- NULL si el test no alcanzó a tener al menos 2 afinidades con datos (muchas respuestas "SE")
+    especialidad_principal  text,
     especialidad_secundaria text,
     calculado_en            timestamptz not null default now(),
     unique (alumno_id, test_id)

@@ -17,9 +17,13 @@ RAIZ = Path(__file__).resolve().parent.parent
 REF = RAIZ / "docs" / "referencia"
 DESTINO = RAIZ / "config" / "tests"
 POR_BLOQUE = 10
+# Códigos de las especialidades de la carrera; los comparten los dos tests (sirven para compararlos).
+CODIGOS_ESPECIALIDAD = {"Mercadotecnia": "MKT", "Capital Humano": "CH", "Administración Financiera": "AF",
+                        "Negocios Internacionales": "NI", "Emprendimiento": "EMP"}
 
 
-def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escala) -> None:
+def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escala,
+             niveles, afinidades=None) -> None:
     hojas = {
         "info": pd.DataFrame([("titulo", titulo), ("instrucciones", instrucciones)],
                              columns=["clave", "valor"]),
@@ -28,14 +32,19 @@ def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escal
             [(pid, ceil(n / POR_BLOQUE), txt, esp, "NO") for n, (pid, txt, esp) in enumerate(preguntas, 1)],
             columns=["id", "bloque", "texto", "especialidad_codigo", "invertida"]),
         "escala": pd.DataFrame(escala, columns=["valor", "etiqueta"]),
+        "niveles": pd.DataFrame(niveles, columns=["ambito", "minimo", "etiqueta"]),
     }
+    if afinidades:
+        hojas["afinidad"] = pd.DataFrame(
+            afinidades, columns=["codigo", "nombre", "componentes", "descripcion"])
     with pd.ExcelWriter(ruta, engine="openpyxl") as w:
         for nombre, df in hojas.items():
             df.to_excel(w, sheet_name=nombre, index=False)
 
 
 def test_1() -> None:
-    ws = openpyxl.load_workbook(REF / "1_test_big_five_fca_calculadora.xlsx")["Test y Respuestas"]
+    wb = openpyxl.load_workbook(REF / "1_test_big_five_fca_calculadora.xlsx")
+    ws = wb["Test y Respuestas"]
     dims = {  # nombre en la calculadora -> código
         "Apertura a la Experiencia": "APERTURA", "Responsabilidad / Tesón": "RESPONSABILIDAD",
         "Extraversión": "EXTRAVERSION", "Amabilidad / Cordialidad": "AMABILIDAD",
@@ -50,16 +59,28 @@ def test_1() -> None:
     for parte in ws["A6"].value.split("|"):
         valor, etiqueta = parte.split("=")
         escala.append((int(valor), etiqueta.strip()))
+    # Afinidad con cada especialidad de la carrera: hoja "Resultados y Diagnóstico" A14:E18
+    # (índice = suma de las dimensiones clave / (25 x número de dimensiones)).
+    res = wb["Resultados y Diagnóstico"]
+    claves = {"Apertura": "APERTURA", "Responsabilidad": "RESPONSABILIDAD", "Extraversión": "EXTRAVERSION",
+              "Amabilidad": "AMABILIDAD", "Estabilidad": "ESTABILIDAD"}
+    afinidades = [(CODIGOS_ESPECIALIDAD[res.cell(r, 1).value], res.cell(r, 1).value,
+                   "+".join(claves[t.strip().split()[0]] for t in res.cell(r, 2).value.split("+")),
+                   res.cell(r, 5).value) for r in range(14, 19)]
+    # Umbrales de las fórmulas de la calculadora: D5 (>=18 de 25 Alto, >=14 Medio) y D14 (0.76 / 0.56).
+    niveles = [("categoria", 0.72, "Alto"), ("categoria", 0.56, "Medio"), ("categoria", 0, "Área de Desarrollo"),
+               ("afinidad", 0.76, "Alta Afinidad"), ("afinidad", 0.56, "Afinidad Media"),
+               ("afinidad", 0, "Desarrollo Requerido")]
     # Se omite la frase de la calculadora que habla de la "columna Respuesta" de Excel.
     instrucciones = ws["A5"].value.split(" Selecciona")[0].strip()
-    escribir(DESTINO / "1_test_big_five.xlsx", "Big Five (OCEAN)", instrucciones, esp, preguntas, escala)
+    escribir(DESTINO / "1_test_big_five.xlsx", "Big Five (OCEAN)", instrucciones, esp, preguntas, escala,
+             niveles, afinidades)
 
 
 def test_2() -> None:
     wb = openpyxl.load_workbook(REF / "2_test_orientacion_especialidades_administracion.xlsx")
     ws, guia = wb["Test_Orientación"], wb["Guía_Tutoría"]
-    codigos = {"Mercadotecnia": "MKT", "Capital Humano": "CH", "Administración Financiera": "AF",
-               "Negocios Internacionales": "NI", "Emprendimiento": "EMP"}
+    codigos = CODIGOS_ESPECIALIDAD
     preguntas = [(ws.cell(r, 3).value.strip(), ws.cell(r, 4).value.strip(), codigos[ws.cell(r, 2).value])
                  for r in range(23, 48)]
     esp = []
@@ -70,9 +91,13 @@ def test_2() -> None:
     # Escala 0-4 más la fila especial "SE" (sin experiencia: dato faltante, no es 0).
     escala = [(int(ws.cell(r, 1).value), ws.cell(r, 2).value) for r in range(14, 19)]
     escala.append(("SE", ws.cell(19, 2).value))
+    # Umbrales de la fórmula E51 de la calculadora (% de dominio).
+    niveles = [("categoria", 0.8, "ALTO (Perfil Fuerte)"), ("categoria", 0.5, "MEDIO (En Desarrollo)"),
+               ("categoria", 0, "BAJO (Baja Afinidad)")]
     instrucciones = ws["A10"].value.split("\n")[0].strip()
     escribir(DESTINO / "2_test_orientacion_especialidades.xlsx",
-             "Orientación para especialidades en Administración", instrucciones, esp, preguntas, escala)
+             "Orientación para especialidades en Administración", instrucciones, esp, preguntas, escala,
+             niveles)
 
 
 if __name__ == "__main__":

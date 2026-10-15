@@ -68,10 +68,10 @@ def _registro(repo: Repositorio, aviso_md: str, cliente_ip: str) -> None:
         st.rerun()
 
 
-def render(repo, tests: Sequence, aviso_md: str, cliente_ip: str) -> None:
+def render(repo, tests: Sequence, aviso_md: str, cliente_ip: str, mostrar_resultados: bool = True) -> None:
     etapa = st.session_state.setdefault("etapa", "registro")
     if etapa == "listo" and "alumno" in st.session_state:
-        test.render(repo, st.session_state["alumno"], tests)
+        test.render(repo, st.session_state["alumno"], tests, mostrar_resultados)
     else:
         st.session_state["etapa"] = "registro"
         _registro(repo, aviso_md, cliente_ip)

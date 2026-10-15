@@ -6,7 +6,9 @@ avance se guarda en la BD al terminar cada bloque (ver modules.avance).
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Sequence
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -14,8 +16,13 @@ from modules.acceso import Alumno
 from modules.avance import (AvanceError, Posicion, RepositorioAvance, calcular_posicion,
                             guardar_bloque)
 from modules.config_loader import TestConfig
+from modules.reports import (AVISO, excel_individual, grafica_radar, pct, pdf_individual,
+                             vista_conjunta)
+from modules.resultados import resultados_del_alumno
+from modules.scoring import ResultadoTest
 
 log = logging.getLogger(__name__)
+ZONA = ZoneInfo("America/Mexico_City")
 
 # Áreas de toque de al menos 44 px para contestar con el dedo en el celular.
 _CSS = """
@@ -52,14 +59,72 @@ def _encabezado(pos: Posicion) -> None:
             st.write(test.instrucciones)
 
 
-def _fin() -> None:
+def _nombre(r: ResultadoTest, codigo: str | None) -> str:
+    return "Sin datos suficientes" if codigo is None else next(a.nombre for a in r.afinidades if a.codigo == codigo)
+
+
+def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados: list[ResultadoTest],
+                        archivos: dict) -> None:
+    st.subheader("Tus resultados")
+    st.caption(AVISO)
+    st.table({"Test": [f"{i}. {t.titulo}" for i, t in enumerate(tests, start=1)],
+              "1ª opción": [_nombre(r, r.principal) for r in resultados],
+              "2ª opción": [_nombre(r, r.secundaria) for r in resultados]})
+    vc = vista_conjunta(resultados)
+    if vc is not None:
+        st.markdown("**Vista conjunta de los tests**")
+        st.caption("Coinciden en la primera opción." if vc.coinciden else
+                   "Los tests no apuntan a la misma primera opción: compara y coméntalo con tu tutor.")
+        st.table({"Especialidad": [f.nombre for f in vc.filas],
+                  **{f"Test {i}": [pct(f.porcentajes[i - 1]) for f in vc.filas] for i in range(1, len(tests) + 1)},
+                  "Promedio": [pct(f.promedio) for f in vc.filas]})
+        if "radar" not in archivos:
+            archivos["radar"] = grafica_radar(resultados, [t.titulo for t in tests])
+        if archivos["radar"]:
+            st.image(archivos["radar"])
+    for t, r in zip(tests, resultados):
+        with st.expander(t.titulo):
+            st.table({"Área": [e.nombre for e in r.especialidades],
+                      "Porcentaje": [pct(e.porcentaje) for e in r.especialidades],
+                      "Nivel": [e.nivel or "—" for e in r.especialidades]})
+            if t.afinidades:
+                st.table({"Especialidad": [a.nombre for a in r.afinidades],
+                          "Afinidad": [pct(a.porcentaje) for a in r.afinidades],
+                          "Nivel": [a.nivel or "—" for a in r.afinidades]})
+    st.info("Descarga tus resultados ahora: al cerrar esta página ya no podrás volver a consultarlos aquí.")
+    c1, c2 = st.columns(2)
+    c1.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
+                       mime="application/pdf", use_container_width=True, type="primary")
+    c2.download_button("Descargar Excel", archivos["xlsx"], file_name=f"resultados_{alumno.matricula}.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                       use_container_width=True)
+
+
+def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool) -> None:
     st.title("Evaluación Diagnóstica FCA")
     st.success("¡Terminaste! Tus respuestas quedaron guardadas.")
-    st.write("Gracias por tu participación. Tu tutor u orientador te compartirá los "
-             "resultados. Ya puedes cerrar esta página.")
+    if not mostrar:
+        st.write("Gracias por tu participación. Tu tutor u orientador te compartirá los resultados. "
+                 "Ya puedes cerrar esta página.")
+        return
+    try:
+        archivos = st.session_state.setdefault(f"archivos-{alumno.id}", {})
+        if "pdf" not in archivos:
+            resultados = resultados_del_alumno(repo, alumno, tests)
+            fecha = datetime.now(ZONA)
+            archivos["resultados"] = resultados
+            archivos["pdf"] = pdf_individual(alumno, tests, resultados, fecha)
+            archivos["xlsx"] = excel_individual(alumno, tests, resultados, fecha)
+    except Exception:
+        log.exception("No se pudieron generar los resultados del alumno")
+        st.error("Tus respuestas están guardadas, pero no pudimos generar tus resultados ahora. "
+                 "Avisa a tu tutor.")
+        return
+    _mostrar_resultados(alumno, tests, archivos["resultados"], archivos)
 
 
-def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig]) -> None:
+def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig],
+           mostrar_resultados: bool = True) -> None:
     try:
         pos = calcular_posicion(repo, alumno, tests)
     except AvanceError as exc:
@@ -70,7 +135,7 @@ def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig])
         st.error("No pudimos cargar tu avance. Recarga la página e inténtalo de nuevo.")
         return
     if pos is None:
-        _fin()
+        _fin(repo, alumno, tests, mostrar_resultados)
         return
 
     if st.session_state.pop("reanudado", False):

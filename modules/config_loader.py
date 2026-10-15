@@ -8,16 +8,22 @@ Hojas requeridas en cada archivo:
   - especialidades: codigo, nombre, descripcion, perfil_profesional
   - preguntas:      id, bloque, texto, especialidad_codigo, invertida (SI/NO)
   - escala:         valor, etiqueta   (valor numérico, o la fila especial 'SE' = sin experiencia)
-Hoja opcional:
+Hojas opcionales:
   - info:           clave, valor   (claves: 'titulo' = nombre visible, 'instrucciones' = texto
                     que ve el alumno antes de contestar)
+  - niveles:        ambito, minimo, etiqueta   (ambito: 'categoria' o 'afinidad'; minimo = fracción
+                    0-1 del puntaje máximo desde la que aplica la etiqueta; debe haber una fila con 0)
+  - afinidad:       codigo, nombre, componentes, descripcion   (afinidades derivadas: porcentaje
+                    combinado de varias especialidades del test, p. ej. 'APERTURA+EXTRAVERSION')
 Si algo está mal formado, se lanza ConfigError con TODOS los problemas encontrados.
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 
 import pandas as pd
@@ -64,6 +70,20 @@ class OpcionEscala:
 
 
 @dataclass(frozen=True)
+class Nivel:
+    minimo: Fraction  # fracción del puntaje máximo (0 a 1) desde la que aplica la etiqueta
+    etiqueta: str
+
+
+@dataclass(frozen=True)
+class AfinidadDef:
+    codigo: str
+    nombre: str
+    componentes: tuple[str, ...]  # códigos de especialidades del mismo test
+    descripcion: str
+
+
+@dataclass(frozen=True)
 class TestConfig:
     __test__ = False  # que pytest no lo tome por una clase de pruebas
     id: str  # nombre del archivo sin extensión; se guarda en la BD con cada respuesta
@@ -76,6 +96,9 @@ class TestConfig:
     # no un número: se guarda como valor NULL y no entra a la escala numérica.
     sin_experiencia: str | None = None
     instrucciones: str = ""
+    niveles_categoria: tuple[Nivel, ...] = ()  # de mayor a menor `minimo`
+    niveles_afinidad: tuple[Nivel, ...] = ()
+    afinidades: tuple[AfinidadDef, ...] = ()
 
     @property
     def valor_min(self) -> int:
@@ -120,6 +143,16 @@ def _duplicados(valores: list[str]) -> list[str]:
     return repetidos
 
 
+def _version(preguntas: list[Pregunta], escala: list[OpcionEscala], sin_experiencia: str | None) -> str:
+    """Identifica con qué preguntas y escala contestó el alumno. Solo depende de lo que cambia
+    el significado de las respuestas; corregir descripciones o niveles NO invalida avances."""
+    canon = json.dumps(
+        [[(p.id, p.bloque, p.texto, p.especialidad_codigo, p.invertida) for p in preguntas],
+         [(o.valor, o.etiqueta) for o in escala], sin_experiencia],
+        ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(canon.encode()).hexdigest()[:16]
+
+
 def load_test_config(ruta: str | Path) -> TestConfig:
     ruta = Path(ruta)
     test_id = ruta.stem.lower()
@@ -130,7 +163,6 @@ def load_test_config(ruta: str | Path) -> TestConfig:
         ])
     if not ruta.is_file():
         raise ConfigError([f"No se encontró el archivo {ruta}"])
-    contenido = ruta.read_bytes()
     try:
         hojas = pd.read_excel(ruta, sheet_name=None, dtype=object, engine="openpyxl")
     except Exception as exc:  # archivo corrupto o no es xlsx
@@ -236,6 +268,68 @@ def load_test_config(ruta: str | Path) -> TestConfig:
     for cod in sorted(codigos - usadas):
         errores.append(f"La especialidad '{cod}' no tiene ninguna pregunta.")
 
+    # --- niveles y afinidades (opcionales) ---
+    niveles = {"categoria": [], "afinidad": []}
+    if "niveles" in hojas:
+        df = hojas["niveles"]
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        faltan = [c for c in ("ambito", "minimo", "etiqueta") if c not in df.columns]
+        if faltan:
+            errores.append(f"La hoja 'niveles' no tiene las columnas: {', '.join(faltan)}.")
+        else:
+            for i, fila in df.iterrows():
+                n = int(i) + 2
+                ambito, etiqueta = _texto(fila["ambito"]).lower(), _texto(fila["etiqueta"])
+                try:
+                    minimo = Fraction(_texto(fila["minimo"]).replace(",", "."))
+                except (ValueError, ZeroDivisionError):
+                    minimo = None
+                if ambito not in niveles:
+                    errores.append(f"niveles fila {n}: 'ambito' debe ser categoria o afinidad.")
+                elif minimo is None or not 0 <= minimo <= 1:
+                    errores.append(f"niveles fila {n}: 'minimo' debe ser un número entre 0 y 1.")
+                elif not etiqueta:
+                    errores.append(f"niveles fila {n}: 'etiqueta' es obligatoria.")
+                else:
+                    niveles[ambito].append(Nivel(minimo, etiqueta))
+        for ambito, filas in niveles.items():
+            if not filas:
+                continue
+            if _duplicados([str(n.minimo) for n in filas]):
+                errores.append(f"niveles ({ambito}): hay valores de 'minimo' repetidos.")
+            if all(n.minimo != 0 for n in filas):
+                errores.append(f"niveles ({ambito}): falta una fila con minimo 0 (cubre el resto).")
+            filas.sort(key=lambda n: n.minimo, reverse=True)
+
+    afinidades: list[AfinidadDef] = []
+    if "afinidad" in hojas:
+        df = hojas["afinidad"]
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        faltan = [c for c in ("codigo", "nombre", "componentes", "descripcion") if c not in df.columns]
+        if faltan:
+            errores.append(f"La hoja 'afinidad' no tiene las columnas: {', '.join(faltan)}.")
+        else:
+            for i, fila in df.iterrows():
+                n = int(i) + 2
+                cod, nombre = _texto(fila["codigo"]), _texto(fila["nombre"])
+                comps = tuple(c.strip() for c in _texto(fila["componentes"]).split("+") if c.strip())
+                if not cod or not nombre:
+                    errores.append(f"afinidad fila {n}: 'codigo' y 'nombre' son obligatorios.")
+                elif not comps:
+                    errores.append(f"afinidad fila {n}: 'componentes' no puede estar vacío.")
+                elif (malas := [c for c in comps if c not in codigos]):
+                    errores.append(f"afinidad fila {n}: componentes inexistentes: {', '.join(malas)}.")
+                elif len(set(comps)) != len(comps):
+                    errores.append(f"afinidad fila {n}: hay componentes repetidos.")
+                else:
+                    afinidades.append(AfinidadDef(cod, nombre, comps, _texto(fila["descripcion"])))
+            for cod in _duplicados([a.codigo for a in afinidades]):
+                errores.append(f"afinidad: código repetido '{cod}'.")
+            if not afinidades:
+                errores.append("La hoja 'afinidad' está vacía.")
+    if niveles["afinidad"] and not afinidades:
+        errores.append("niveles: hay filas de ambito 'afinidad' pero no existe la hoja 'afinidad'.")
+
     if errores:
         raise ConfigError(errores)
 
@@ -245,9 +339,12 @@ def load_test_config(ruta: str | Path) -> TestConfig:
         especialidades=tuple(especialidades),
         preguntas=tuple(preguntas),
         escala=tuple(escala),
-        version=hashlib.sha256(contenido).hexdigest()[:16],
+        version=_version(preguntas, escala, sin_experiencia),
         sin_experiencia=sin_experiencia,
         instrucciones=instrucciones,
+        niveles_categoria=tuple(niveles["categoria"]),
+        niveles_afinidad=tuple(niveles["afinidad"]),
+        afinidades=tuple(afinidades),
     )
 
 
