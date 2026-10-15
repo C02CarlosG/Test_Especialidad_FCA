@@ -93,3 +93,9 @@ Revisar el PDF resultante y ajustar las descripciones de cada especialidad.
 - Un solo QR y una sola URL; el código de grupo solo autoriza la entrada (`grupos.tests_habilitados` permite limitar qué tests hace un grupo).
 - Cada test se califica por separado (ranking, principal y secundaria). El PDF individual trae una sección por test y una gráfica final que relaciona los resultados de los tests (diseño a definir en la Fase 4). En el Excel de grupo, una hoja de resultados por test.
 - BD: `progreso_tests` (avance y versión por test), y `respuestas`/`resultados` llevan `test_id`.
+
+## Actualización: registro sin código de grupo
+- El registro pide apellido paterno, apellido materno, nombre(s), matrícula, edad (>= 18), nombre del tutor/orientador y la aceptación del aviso de privacidad; la fecha de aplicación se llena sola. Ya no se pide correo.
+- **No hay código de grupo ni lista de matrículas autorizadas:** entra cualquier matrícula con formato válido. Se quitan la tabla `grupos`, `tests_habilitados` y la expiración; todos los alumnos contestan todos los tests. Riesgo aceptado: quien tenga el QR puede registrarse con datos inventados.
+- Una matrícula se registra una sola vez. Si sigue "en_curso", se reanuda con la misma matrícula y el mismo nombre; entrar con una matrícula ajena cuenta como intento fallido (5 por matrícula y 100 por IP, cada 15 min).
+- Los reportes "por grupo" de las Fases 4 y 5 quedan por definir (por ejemplo, por tutor o por fecha de aplicación).

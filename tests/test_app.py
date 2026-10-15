@@ -6,7 +6,13 @@ RAIZ = Path(__file__).resolve().parent.parent
 
 
 def test_app_abre_sin_excepciones():
-    at = AppTest.from_file(str(RAIZ / "app.py"), default_timeout=30).run()
+    """Con secretos sin configurar el alumno ve un aviso genérico, no un traceback.
+
+    Se fijan secretos falsos para no depender del secrets.toml local ni tocar Supabase.
+    """
+    at = AppTest.from_file(str(RAIZ / "app.py"), default_timeout=30)
+    at.secrets["supabase"] = {"url": "https://x.supabase.co", "service_role_key": "REEMPLAZAR"}
+    at.run()
     assert not at.exception
-    assert at.title[0].value == "Test de especialización"
-    assert any("3 tests cargados" in s.value for s in at.success)
+    assert at.title[0].value == "Evaluación Diagnóstica FCA"
+    assert any("no está disponible" in e.value for e in at.error)

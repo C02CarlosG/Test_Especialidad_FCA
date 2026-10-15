@@ -6,7 +6,6 @@ import pytest
 from modules.config_loader import ConfigError, load_all_tests, load_test_config
 
 CARPETA = Path(__file__).resolve().parent.parent / "config" / "tests"
-EJEMPLO = CARPETA / "test_1_ejemplo.xlsx"
 
 
 def _escribir(ruta, esp=None, pre=None, esc=None, omitir=()):
@@ -33,17 +32,45 @@ def _errores(ruta) -> str:
     return "\n".join(exc.value.errores)
 
 
-def test_ejemplo_valido():
-    cfg = load_test_config(EJEMPLO)
-    assert len(cfg.especialidades) == 3
-    assert len(cfg.preguntas) == 12
+def test_test_1_real_big_five():
+    cfg = load_test_config(CARPETA / "1_test_big_five.xlsx")
+    assert cfg.titulo == "Big Five (OCEAN)"
+    assert len(cfg.especialidades) == 5 and len(cfg.preguntas) == 25
     assert (cfg.valor_min, cfg.valor_max) == (1, 5)
-    assert cfg.bloques == [1, 2]
-    assert len(cfg.preguntas_de_bloque(1)) == 10
-    assert sum(p.invertida for p in cfg.preguntas) == 2
-    assert all("EJEMPLO" in e.nombre for e in cfg.especialidades)
-    assert cfg.id == "test_1_ejemplo"
-    assert cfg.titulo == "EJEMPLO - Test 1: Intereses"
+    assert cfg.bloques == [1, 2, 3]
+    assert len(cfg.preguntas_de_bloque(1)) == 10 and len(cfg.preguntas_de_bloque(3)) == 5
+    assert not any(p.invertida for p in cfg.preguntas)
+
+
+def test_test_2_real_orientacion():
+    cfg = load_test_config(CARPETA / "2_test_orientacion_especialidades.xlsx")
+    assert len(cfg.especialidades) == 5 and len(cfg.preguntas) == 25
+    assert (cfg.valor_min, cfg.valor_max) == (0, 4)
+    assert {p.especialidad_codigo for p in cfg.preguntas} == {"MKT", "CH", "AF", "NI", "EMP"}
+    assert cfg.sin_experiencia == "Sin Experiencia Previa"
+    assert [o.valor for o in cfg.escala] == [0, 1, 2, 3, 4]  # SE no es parte de la escala numérica
+
+
+def test_test_1_no_tiene_opcion_se():
+    assert load_test_config(CARPETA / "1_test_big_five.xlsx").sin_experiencia is None
+
+
+def test_opcion_se_valida(tmp_path):
+    esc = [(1, "no"), (2, "neutral"), (3, "si"), ("se", "Sin experiencia")]
+    cfg = load_test_config(_escribir(tmp_path / "t.xlsx", esc=esc))
+    assert cfg.sin_experiencia == "Sin experiencia" and cfg.valor_max == 3
+
+
+def test_opcion_se_repetida_o_sin_etiqueta(tmp_path):
+    msg = _errores(_escribir(tmp_path / "a.xlsx", esc=[(1, "a"), (2, "b"), ("SE", "x"), ("SE", "y")]))
+    assert "'SE' está repetida" in msg
+    msg = _errores(_escribir(tmp_path / "b.xlsx", esc=[(1, "a"), (2, "b"), ("SE", "")]))
+    assert "'SE' necesita etiqueta" in msg
+
+
+def test_solo_se_no_basta_como_escala(tmp_path):
+    msg = _errores(_escribir(tmp_path / "t.xlsx", esc=[(1, "a"), ("SE", "x")]))
+    assert "al menos 2 valores" in msg
 
 
 def test_valido_minimo(tmp_path):
@@ -135,10 +162,10 @@ def test_nombre_de_archivo_invalido(tmp_path):
     assert "Nombre de archivo inválido" in _errores(_escribir(tmp_path / "Test Uno.xlsx"))
 
 
-def test_carga_los_tres_tests_en_orden():
+def test_carga_los_tests_reales_en_orden():
     tests = load_all_tests(CARPETA)
-    assert [t.id for t in tests] == ["test_1_ejemplo", "test_2_ejemplo", "test_3_ejemplo"]
-    assert len({t.version for t in tests}) == 3
+    assert [t.id for t in tests] == ["1_test_big_five", "2_test_orientacion_especialidades"]
+    assert len({t.version for t in tests}) == len(tests)
 
 
 def test_carpeta_vacia(tmp_path):

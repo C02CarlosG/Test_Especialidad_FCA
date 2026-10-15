@@ -1,34 +1,47 @@
-"""Entrada de la app. Fase 1: verifica configuración y conexión.
+"""Entrada de la app. Fase 2: ruteo hacia la vista del alumno.
 
-Las vistas de alumno y admin se conectan en las Fases 2, 3 y 5.
+La vista de admin se conecta en la Fase 5.
 """
+import logging
 from pathlib import Path
 
 import streamlit as st
 
 from modules.config_loader import ConfigError, load_all_tests
-from modules.db import DBConfigError, crear_cliente, verificar_conexion
+from modules.db import DBConfigError, SupabaseRepo, crear_cliente
+from views import alumno
 
 RAIZ = Path(__file__).parent
+log = logging.getLogger(__name__)
 
-st.set_page_config(page_title="Test de especialización", page_icon="🎓", layout="centered")
-st.title("Test de especialización")
+st.set_page_config(page_title="Evaluación Diagnóstica FCA", page_icon="🎓", layout="centered")
+
+
+@st.cache_resource
+def _tests():
+    return load_all_tests(RAIZ / "config" / "tests")
+
+
+@st.cache_resource
+def _repo():
+    return SupabaseRepo(crear_cliente(st.secrets))
+
+
+def _cliente_ip() -> str:
+    """IP del cliente según el proxy de Streamlit Cloud; 'desconocido' si no hay cabecera."""
+    try:
+        xff = st.context.headers.get("X-Forwarded-For", "")
+    except Exception:
+        xff = ""
+    return xff.split(",")[0].strip() or "desconocido"
+
 
 try:
-    tests = load_all_tests(RAIZ / "config" / "tests")
-    st.success(f"{len(tests)} tests cargados (se contestan en este orden):")
-    for i, t in enumerate(tests, start=1):
-        st.write(f"{i}. **{t.titulo}**: {len(t.especialidades)} especialidades, "
-                 f"{len(t.preguntas)} preguntas, escala {t.valor_min}-{t.valor_max}.")
-except ConfigError as exc:
-    st.error("Los archivos de config/tests no son válidos:")
-    for e in exc.errores:
-        st.write(f"- {e}")
-
-try:
-    verificar_conexion(crear_cliente(st.secrets))
-    st.success("Conexión con Supabase correcta.")
-except (DBConfigError, FileNotFoundError) as exc:
-    st.warning(f"Supabase sin configurar: {exc}")
-except Exception as exc:  # red, esquema sin crear, clave inválida
-    st.error(f"No se pudo consultar Supabase: {type(exc).__name__}")
+    tests, repo = _tests(), _repo()
+except (ConfigError, DBConfigError, FileNotFoundError):
+    log.exception("Configuración incompleta")
+    st.title("Evaluación Diagnóstica FCA")
+    st.error("El test no está disponible por el momento. Avisa a tu docente.")
+else:
+    aviso = (RAIZ / "config" / "aviso_privacidad.md").read_text(encoding="utf-8")
+    alumno.render(repo, tests, aviso, _cliente_ip())

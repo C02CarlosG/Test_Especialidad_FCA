@@ -1,23 +1,14 @@
 -- Esquema del test vocacional. Ejecutar en Supabase: SQL Editor.
 create extension if not exists "pgcrypto";
 
-create table if not exists public.grupos (
-    id            uuid primary key default gen_random_uuid(),
-    codigo_acceso text not null unique,
-    nombre        text not null,
-    activo        boolean not null default true,
-    expira_en     timestamptz,
-    -- ids de test habilitados para el grupo (nombre de archivo sin .xlsx); null = todos
-    tests_habilitados text[],
-    creado_en     timestamptz not null default now()
-);
-
 create table if not exists public.alumnos (
     id                uuid primary key default gen_random_uuid(),
-    nombre            text not null,
-    matricula         text not null unique,
-    correo            text not null,
-    grupo_id          uuid not null references public.grupos(id),
+    apellido_paterno  text not null,
+    apellido_materno  text not null,
+    nombres           text not null,
+    matricula         text not null unique check (matricula ~ '^[0-9]{6}$'),
+    edad              smallint not null check (edad between 18 and 99),
+    tutor             text not null,   -- nombre del tutor / orientador
     acepto_privacidad boolean not null default false,
     acepto_en         timestamptz,
     estado            text not null default 'en_curso'
@@ -41,7 +32,7 @@ create table if not exists public.respuestas (
     alumno_id   uuid not null references public.alumnos(id) on delete cascade,
     test_id     text not null,
     pregunta_id text not null,
-    valor       integer not null,
+    valor       integer,          -- NULL = "SE" (sin experiencia): dato faltante, no es 0
     unique (alumno_id, test_id, pregunta_id)
 );
 
@@ -57,17 +48,16 @@ create table if not exists public.resultados (
     unique (alumno_id, test_id)
 );
 
--- Intentos fallidos persistentes (código de grupo / admin), para limitar fuerza bruta
+-- Intentos fallidos persistentes (acceso con matrícula ajena / admin), para limitar fuerza bruta
 -- aunque Streamlit reinicie la sesión.
 create table if not exists public.intentos_fallidos (
     id        bigserial primary key,
-    tipo      text not null check (tipo in ('codigo_grupo', 'admin')),
+    tipo      text not null check (tipo in ('acceso', 'admin')),
     clave     text not null,           -- matrícula o identificador de cliente
     creado_en timestamptz not null default now()
 );
 
 -- Índices
-create index if not exists idx_alumnos_grupo      on public.alumnos(grupo_id);
 create index if not exists idx_alumnos_estado     on public.alumnos(estado);
 create index if not exists idx_respuestas_alumno  on public.respuestas(alumno_id, test_id);
 create index if not exists idx_progreso_alumno    on public.progreso_tests(alumno_id);

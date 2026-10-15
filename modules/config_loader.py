@@ -7,7 +7,7 @@ test es el nombre del archivo sin extensión.
 Hojas requeridas en cada archivo:
   - especialidades: codigo, nombre, descripcion, perfil_profesional
   - preguntas:      id, bloque, texto, especialidad_codigo, invertida (SI/NO)
-  - escala:         valor, etiqueta
+  - escala:         valor, etiqueta   (valor numérico, o la fila especial 'SE' = sin experiencia)
 Hoja opcional:
   - info:           clave, valor   (clave 'titulo' = nombre visible del test)
 Si algo está mal formado, se lanza ConfigError con TODOS los problemas encontrados.
@@ -70,6 +70,9 @@ class TestConfig:
     preguntas: tuple[Pregunta, ...]
     escala: tuple[OpcionEscala, ...]
     version: str  # hash del archivo: identifica con qué test respondió cada alumno
+    # Etiqueta de la opción "SE" (sin experiencia), si el test la tiene. Es un dato faltante,
+    # no un número: se guarda como valor NULL y no entra a la escala numérica.
+    sin_experiencia: str | None = None
 
     @property
     def valor_min(self) -> int:
@@ -169,8 +172,17 @@ def load_test_config(ruta: str | Path) -> TestConfig:
 
     # --- escala ---
     escala: list[OpcionEscala] = []
+    sin_experiencia: str | None = None
     for i, fila in hojas["escala"].iterrows():
         n = int(i) + 2
+        if _texto(fila["valor"]).upper() == "SE":
+            if sin_experiencia is not None:
+                errores.append(f"escala fila {n}: la opción 'SE' está repetida.")
+            elif not _texto(fila["etiqueta"]):
+                errores.append(f"escala fila {n}: la opción 'SE' necesita etiqueta.")
+            else:
+                sin_experiencia = _texto(fila["etiqueta"])
+            continue
         valor = _entero(fila["valor"])
         if valor is None:
             errores.append(f"escala fila {n}: 'valor' debe ser un número entero.")
@@ -228,6 +240,7 @@ def load_test_config(ruta: str | Path) -> TestConfig:
         preguntas=tuple(preguntas),
         escala=tuple(escala),
         version=hashlib.sha256(contenido).hexdigest()[:16],
+        sin_experiencia=sin_experiencia,
     )
 
 
