@@ -1,7 +1,7 @@
 """Identidad visual: hoja de estilos y componentes HTML pequeños (camino de pasos, chips, tablas).
 
-Todo el texto que viene de datos (títulos, nombres de especialidades) se escapa. Las fuentes son las
-del sistema: no se carga nada de servidores de terceros.
+Todo el texto que viene de datos (títulos, nombres de especialidades) se escapa. Las tipografías (Fraunces y
+Plus Jakarta Sans) van autoalojadas en ./static/fonts: no se carga nada de servidores de terceros.
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from typing import Sequence
 import streamlit as st
 
 INSTITUCION = "Facultad de Contaduría y Administración"
+UNIVERSIDAD = "Universidad Autónoma Benito Juárez de Oaxaca"
 # Los logos viven en ./static y se sirven con enableStaticServing (config.toml): el navegador los
 # guarda en caché y no se reenvían en cada recarga de la página.
 LOGO_FCA = ("/app/static/logo_fca.png", 165, 240, "Facultad de Contaduría y Administración, Calidad Académica")
@@ -37,7 +38,8 @@ def _logo(clase: str, logo: tuple) -> str:
 
 def _marca() -> str:
     """Un logo a cada lado y el nombre de la facultad al centro."""
-    return (f'<div class="marca">{_logo("fca", LOGO_FCA)}<span class="inst">{INSTITUCION}</span>'
+    return (f'<div class="marca">{_logo("fca", LOGO_FCA)}'
+            f'<span class="inst"><span class="kicker">{UNIVERSIDAD}</span><span class="nombre">{INSTITUCION}</span></span>'
             f'{_logo("uabjo", LOGO_UABJO)}</div>')
 
 

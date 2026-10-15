@@ -1,8 +1,17 @@
+/* Tipografías autoalojadas (./static/fonts, sin servidores de terceros): Fraunces para títulos y cifras,
+   Plus Jakarta Sans para el texto corrido. */
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url('/app/static/fonts/fraunces-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 200 800; font-display: swap;
+  src: url('/app/static/fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); }
+
 /* Identidad visual: azul marino + oro. El oro solo aparece en el camino de pasos, la barra de avance
    y el subrayado del resultado; las acciones y la opción elegida van en marino. */
 :root {
   --marino: #0F1E4A; --marino-2: #1B2F6B; --oro: #E5B300; --bruma: #EEF2F8; --papel: #FFFFFF;
   --linea: #D6DDEB; --tinta: #1E2A4A; --suave: #5A6788;
+  --serif: 'Fraunces', 'Iowan Old Style', Palatino, Georgia, serif;
+  --sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --verde: #17683F; --verde-f: #E3F3EA; --ambar: #8A5A00; --ambar-f: #FFF1C9; --pizarra: #44506F; --pizarra-f: #E7EBF4;
 }
 
@@ -10,7 +19,9 @@
 [data-testid="stMainBlockContainer"] { max-width: 760px; padding-top: 1.25rem; padding-bottom: 4rem; }
 [data-testid="stHeader"] { background: transparent; }
 footer, [data-testid="stDecoration"] { display: none; }
-h1 { letter-spacing: -0.015em; line-height: 1.12; color: var(--marino); padding-bottom: .25rem; }
+html, body, [data-testid="stApp"] { font-family: var(--sans); }
+h1, h2, h3 { font-family: var(--serif); font-optical-sizing: auto; }
+h1 { font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; color: var(--marino); padding-bottom: .25rem; }
 h1::after { content: ""; display: block; width: 3.5rem; height: 4px; margin-top: .6rem; background: var(--oro); border-radius: 2px; }
 h2, h3 { color: var(--marino); letter-spacing: -0.005em; }
 [data-testid="stHeadingActionElements"] { display: none; }  /* sin el icono de ancla junto a los títulos */
@@ -19,9 +30,14 @@ p, li, label { line-height: 1.55; }
 
 /* ---- marca y camino de pasos ---- */
 .camino { display: flex; flex-direction: column; gap: .9rem; margin: .25rem 0 1.4rem; }
-.camino .marca { display: flex; align-items: center; justify-content: space-between; gap: .9rem; padding-bottom: .9rem; border-bottom: 1px solid var(--linea); }
-.camino .logo { flex: 0 0 auto; height: 4.6rem; width: auto; object-fit: contain; }
-.camino .inst { flex: 1 1 auto; text-align: center; color: var(--marino); font: 650 .98rem/1.3 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; letter-spacing: .005em; text-wrap: balance; }
+.camino .marca { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) 5.5rem; align-items: center; column-gap: 1rem; padding-bottom: .9rem; border-bottom: 1px solid var(--linea); }
+.camino .logo { width: 100%; height: 4.75rem; object-fit: contain; }  /* misma altura y misma caja: los dos logos pesan igual */
+.camino .logo.fca { object-position: left center; }
+.camino .logo.uabjo { object-position: right center; }
+.camino .inst { display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; color: var(--marino); text-wrap: balance; }
+.camino .inst .kicker { font: 700 .66rem/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--suave); }
+.camino .inst .nombre { font: 600 1.28rem/1.18 var(--serif); letter-spacing: -.01em; }
+.camino .inst::after { content: ""; width: 2.6rem; height: 3px; margin-top: .15rem; border-radius: 2px; background: var(--oro); }
 .camino ol { list-style: none; display: flex; align-items: flex-start; margin: 0; padding: 0; }
 .camino li { position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: .4rem; min-width: 0; }
 .camino li + li::before { content: ""; position: absolute; top: .7rem; right: 50%; width: 100%; height: 3px; background: var(--linea); z-index: 0; }
@@ -32,7 +48,7 @@ p, li, label { line-height: 1.55; }
 .camino li.actual .punto { border-color: var(--marino); background: var(--marino); box-shadow: 0 0 0 4px rgba(15, 30, 74, .14); }
 .camino .rotulo { font-size: .78rem; color: var(--suave); text-align: center; line-height: 1.2; }
 .camino li.actual .rotulo { color: var(--marino); font-weight: 700; }
-@media (max-width: 520px) { .camino li:not(.actual) .rotulo { display: none; } .camino .logo { height: 3.8rem; } .camino .inst { font-size: .8rem; } }
+@media (max-width: 520px) { .camino li:not(.actual) .rotulo { display: none; } .camino .marca { grid-template-columns: 3.6rem minmax(0, 1fr) 3.6rem; column-gap: .6rem; } .camino .logo { height: 3.6rem; } .camino .inst .nombre { font-size: 1rem; } .camino .inst .kicker { font-size: .56rem; letter-spacing: .08em; } }
 
 /* ---- tarjetas: formularios y contenedores con borde ---- */
 [data-testid="stForm"], [data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]) {
@@ -65,8 +81,8 @@ button[data-testid="stBaseButton-secondary"]:hover { border-color: var(--marino)
 /* ---- preguntas y opciones ---- */
 .pregunta { display: flex; gap: .85rem; align-items: baseline; margin: 1.35rem 0 .55rem; padding-top: 1.15rem; border-top: 1px solid var(--linea); }
 .pregunta.primera { border-top: 0; padding-top: 0; margin-top: .4rem; }
-.pregunta .num { flex: 0 0 auto; min-width: 2.1rem; color: var(--marino); opacity: .55; font: 700 1.6rem/1 'Iowan Old Style', 'Palatino Linotype', Georgia, serif; font-variant-numeric: lining-nums tabular-nums; }
-.pregunta p { margin: 0; font: 600 1.05rem/1.45 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; color: var(--marino); max-width: 60ch; }
+.pregunta .num { flex: 0 0 auto; min-width: 2.1rem; color: var(--marino); opacity: .55; font: 600 1.6rem/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
+.pregunta p { margin: 0; font: 600 1.05rem/1.45 var(--serif); color: var(--marino); max-width: 60ch; }
 [data-testid="stElementContainer"]:has([data-testid="stRadio"]) { width: 100% !important; }  /* si no, se encoge al ancho del texto más largo */
 [data-testid="stRadio"] { width: 100%; }
 div[role="radiogroup"] { align-items: stretch !important; width: 100%; }
@@ -83,8 +99,8 @@ label[data-testid="stRadioOption"]:has(input:focus-visible) { outline: 3px solid
 .resumen section { background: var(--papel); border: 1px solid var(--linea); border-top: 4px solid var(--oro); border-radius: 1rem; padding: 1.1rem 1.2rem 1.2rem;
   box-shadow: 0 1px 2px rgba(15, 30, 74, .05), 0 10px 28px -14px rgba(15, 30, 74, .22); }
 .resumen .test { margin: 0 0 .7rem; color: var(--suave); font-size: .82rem; font-weight: 600; }
-.resumen .primera { margin: 0; font: 650 1.55rem/1.15 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; color: var(--marino); letter-spacing: -.01em; }
-.resumen .rol { display: block; margin-bottom: .2rem; color: var(--suave); font: 600 .78rem/1.2 system-ui, sans-serif; letter-spacing: 0; }
+.resumen .primera { margin: 0; font: 650 1.55rem/1.15 var(--serif); color: var(--marino); letter-spacing: -.01em; }
+.resumen .rol { display: block; margin-bottom: .2rem; color: var(--suave); font: 600 .78rem/1.2 var(--sans); letter-spacing: 0; }
 .resumen .segunda { margin: .9rem 0 0; padding-top: .8rem; border-top: 1px solid var(--linea); color: var(--tinta); font-size: .95rem; }
 .resumen .segunda b { color: var(--marino); }
 .resumen .nota { margin: .7rem 0 0; color: var(--suave); font-size: .82rem; }
@@ -105,7 +121,7 @@ label[data-testid="stRadioOption"]:has(input:focus-visible) { outline: 3px solid
 /* ---- panel del docente ---- */
 [data-testid="stMetric"] { background: var(--papel); border: 1px solid var(--linea); border-radius: 1rem; padding: .9rem 1.1rem; }
 [data-testid="stMetricLabel"] p { color: var(--suave); font-weight: 600; font-size: .85rem; }
-[data-testid="stMetricValue"] { color: var(--marino); font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif; }
+[data-testid="stMetricValue"] { color: var(--marino); font-family: var(--serif); }
 [data-baseweb="tab"] { font-weight: 600; }
 [data-baseweb="tab-highlight"] { background: var(--oro); height: 3px; }
 
