@@ -66,10 +66,17 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
                         archivos: dict) -> None:
     st.subheader("Tus resultados")
     st.caption(AVISO)
+    vc = vista_conjunta(resultados)
+    mejor = segunda = aviso = None
+    if vc is not None and vc.filas[0].promedio is not None:
+        mejor = vc.filas[0].nombre
+        segunda = vc.filas[1].nombre if len(vc.filas) > 1 and vc.filas[1].promedio is not None else None
+        aviso = ("Sale del promedio de tus tests y es orientativo." if vc.coinciden else
+                 "Tus tests no coinciden en la 1ª opción: compara cada uno abajo y coméntalo con tu tutor.")
     tema.tarjetas_resumen([
         {"titulo": t.titulo, "primera": _nombre(r, r.principal),
          "segunda": _nombre(r, r.secundaria) if r.secundaria else None, "nota": _nota(r)}
-        for t, r in zip(tests, resultados)])
+        for t, r in zip(tests, resultados)], mejor, segunda, aviso)
     vc = vista_conjunta(resultados)
     if vc is not None:
         st.subheader("Los tests, juntos")

@@ -101,12 +101,33 @@ def tabla(cabeceras: Sequence[str], filas: Sequence[Sequence[str]], numericas: S
     st.html(f'<div class="tabla-w"><table class="tabla"><thead><tr>{cab}</tr></thead><tbody>{cuerpo}</tbody></table></div>')
 
 
-def tarjetas_resumen(items: Sequence[dict]) -> None:
-    """Una tarjeta por test con su 1ª y 2ª opción. items: titulo, primera, segunda, nota (opcional)."""
-    tarjetas = []
+def tarjetas_resumen(items: Sequence[dict], mejor: str | None = None, segunda: str | None = None,
+                     aviso: str | None = None) -> None:
+    """Una tarjeta de recomendación (`mejor`, `segunda`, `aviso`) y, debajo, un sello por test con su
+    1ª y 2ª opción. items: titulo, primera, segunda, nota (opcional). Con un solo test y sin `mejor`,
+    la tarjeta toma la opción de ese test."""
+    if mejor is None and len(items) == 1:
+        mejor, segunda = items[0]["primera"], items[0].get("segunda")
+    hero = ""
+    if mejor is not None:
+        seg = f'<p class="segunda">2ª opción: <b>{escape(segunda)}</b></p>' if segunda else ""
+        av = f'<p class="nota">{escape(aviso)}</p>' if aviso else ""
+        hero = (f'<section class="mejor"><p class="rol">Tu mejor opción</p><p class="nombre">{escape(mejor)}</p>'
+                f'{seg}{av}</section>')
+    sellos = []
     for it in items:
-        segunda = f'<p class="segunda">2ª opción: <b>{escape(it["segunda"])}</b></p>' if it.get("segunda") else ""
-        nota = f'<p class="nota">{escape(it["nota"])}</p>' if it.get("nota") else ""
-        tarjetas.append(f'<section><p class="test">{escape(it["titulo"])}</p>'
-                        f'<p class="primera"><span class="rol">1ª opción</span>{escape(it["primera"])}</p>{segunda}{nota}</section>')
-    st.html(f'<div class="resumen">{"".join(tarjetas)}</div>')
+        seg = f'<span class="seg">2ª: {escape(it["segunda"])}</span>' if it.get("segunda") else ""
+        nota = f'<span class="nota">{escape(it["nota"])}</span>' if it.get("nota") else ""
+        sellos.append(f'<div class="sello"><span class="test">{escape(it["titulo"])}</span>'
+                      f'<span class="opcion">{escape(it["primera"])}</span>{seg}{nota}</div>')
+    st.html(f'<div class="resumen">{hero}<div class="sellos">{"".join(sellos)}</div></div>')
+
+
+def frase_avance(registrados: int, terminaron: int, en_curso: int) -> None:
+    """Resumen del grupo en una frase grande, sin tarjetas."""
+    def parte(n: int, uno: str, varios: str) -> str:
+        return f'<b>{n}</b> {uno if n == 1 else varios}'
+    st.html('<p class="frase">' + '<span class="sep" aria-hidden="true">·</span>'.join([
+        parte(registrados, "alumno registrado", "alumnos registrados"),
+        parte(terminaron, "terminó", "terminaron"),
+        parte(en_curso, "en curso", "en curso")]) + '</p>')

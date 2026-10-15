@@ -1,3 +1,4 @@
+import re
 import time
 
 import pytest
@@ -61,8 +62,8 @@ def test_con_la_contraseña_buena_se_ve_el_panel_completo():
     at = _entrar(_nuevo())
     assert not at.exception and not at.error
     assert [t.label for t in at.tabs] == ["Avance", "Descargas", "Código QR"]
-    assert [m.label for m in at.metric] == ["Registrados", "Terminaron todo", "En curso"]
-    assert [m.value for m in at.metric] == ["4", "1", "3"]
+    frase = re.sub(r"<[^>]+>", "", next(h.value for h in at.get("html") if 'class="frase"' in h.value))
+    assert re.sub(r"\s+", " ", frase).replace("·", " · ").split() == "4 alumnos registrados · 1 terminó · 3 en curso".split()
     tabla = at.dataframe[0].value
     assert list(tabla["Matrícula"]) == ["100001", "100002", "100003", "100004"]
     assert any("versión anterior" in w.value for w in at.warning)  # aviso del alumno con test viejo

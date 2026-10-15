@@ -126,10 +126,7 @@ def _cargar(repo, tests: Sequence[TestConfig]) -> PanelDatos:
 def _pestana_avance(panel: PanelDatos) -> None:
     st.caption(f"Datos cargados a las {st.session_state['panel_en'].strftime('%H:%M')}. "
                "Pulsa «Actualizar datos» para ver lo más reciente.")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Registrados", len(panel.filas))
-    c2.metric("Terminaron todo", panel.terminados)
-    c3.metric("En curso", len(panel.filas) - panel.terminados)
+    tema.frase_avance(len(panel.filas), panel.terminados, len(panel.filas) - panel.terminados)
     for aviso in panel.problemas:
         st.warning(aviso)
     if panel.filas:
