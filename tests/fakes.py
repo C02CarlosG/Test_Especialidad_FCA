@@ -17,6 +17,7 @@ class FakeRepo:
         self.reloj = lambda: datetime.now(timezone.utc)
         self.progreso: dict[tuple[str, str], ProgresoTest] = {}
         self.respuestas: dict[tuple[str, str], dict] = {}
+        self.resultados_guardados: list = []
         self.carrera = False  # simula que otro envío gana la matrícula justo antes de insertar
 
     def contar_intentos(self, tipo, clave, desde):
@@ -58,6 +59,22 @@ class FakeRepo:
         for m, a in self.alumnos.items():
             if a.id == alumno_id:
                 self.alumnos[m] = replace(a, estado="terminado")
+
+    # --- panel del docente ---
+    def listar_alumnos(self):
+        return list(self.alumnos.values())
+
+    def obtener_progreso_todos(self):
+        por_alumno = {}
+        for (a, t), p in self.progreso.items():
+            por_alumno.setdefault(a, {})[t] = p
+        return por_alumno
+
+    def obtener_respuestas_de_test(self, test_id):
+        return {a: dict(r) for (a, t), r in self.respuestas.items() if t == test_id}
+
+    def guardar_resultado(self, alumno_id, resultado, ahora):
+        self.resultados_guardados.append((alumno_id, resultado.test_id, resultado.principal))
 
 
 def alumno(matricula="123456", nombres="Ana", estado="en_curso"):

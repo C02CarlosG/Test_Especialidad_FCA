@@ -26,6 +26,7 @@ class Alumno:
     edad: int
     tutor: str
     estado: str  # en_curso | terminado
+    creado_en: datetime | None = None  # solo lo llenan las consultas del panel del docente
 
     @property
     def nombre_completo(self) -> str:

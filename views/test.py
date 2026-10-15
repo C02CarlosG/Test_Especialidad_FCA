@@ -94,10 +94,10 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
     st.info("Descarga tus resultados ahora: al cerrar esta página ya no podrás volver a consultarlos aquí.")
     c1, c2 = st.columns(2)
     c1.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
-                       mime="application/pdf", use_container_width=True, type="primary", on_click="ignore")
+                       mime="application/pdf", width="stretch", type="primary", on_click="ignore")
     c2.download_button("Descargar Excel", archivos["xlsx"], file_name=f"resultados_{alumno.matricula}.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                       use_container_width=True, on_click="ignore")
+                       width="stretch", on_click="ignore")
 
 
 def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool) -> None:
@@ -163,7 +163,7 @@ def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig],
         ultimo = pos.numero_bloque == pos.total_bloques
         enviar = st.form_submit_button(
             "Terminar este test" if ultimo else "Guardar y continuar",
-            type="primary", use_container_width=True)
+            type="primary", width="stretch")
     if not enviar:
         return
 

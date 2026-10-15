@@ -46,7 +46,7 @@ def _registro(repo: Repositorio, aviso_md: str, cliente_ip: str) -> None:
             st.markdown(aviso_md)
             acepto = st.checkbox("Acepto el aviso de privacidad y declaro ser mayor de edad.")
         enviar = st.form_submit_button("Iniciar evaluación →", type="primary",
-                                       use_container_width=True)
+                                       width="stretch")
     if not enviar:
         return
     datos = DatosAcceso(paterno, materno, nombres, matricula,

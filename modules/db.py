@@ -13,6 +13,7 @@ from supabase import Client, create_client
 
 from modules.acceso import Alumno, MatriculaDuplicada
 from modules.avance import ProgresoTest
+from modules.scoring import ResultadoTest
 
 
 class DBConfigError(Exception):
@@ -39,7 +40,11 @@ def _alumno(fila: dict[str, Any]) -> Alumno:
     return Alumno(id=fila["id"], apellido_paterno=fila["apellido_paterno"],
                   apellido_materno=fila["apellido_materno"], nombres=fila["nombres"],
                   matricula=fila["matricula"], edad=fila["edad"], tutor=fila["tutor"],
-                  estado=fila["estado"])
+                  estado=fila["estado"], creado_en=_fecha(fila.get("creado_en")))
+
+
+def _fecha(valor: str | None) -> datetime | None:
+    return datetime.fromisoformat(valor) if valor else None
 
 
 _COLS_ALUMNO = "id,apellido_paterno,apellido_materno,nombres,matricula,edad,tutor,estado"
@@ -113,3 +118,46 @@ class SupabaseRepo:
 
     def terminar_alumno(self, alumno_id: str) -> None:
         self._c.table("alumnos").update({"estado": "terminado"}).eq("id", alumno_id).execute()
+
+    # --- panel del docente (modules.panel.RepositorioPanel) ---
+    # PostgREST devuelve como máximo ~1000 filas por consulta: se pagina con orden estable.
+
+    def _todas(self, tabla: str, columnas: str, orden: tuple[str, ...], pagina: int = 1000) -> list[dict[str, Any]]:
+        filas: list[dict[str, Any]] = []
+        while True:
+            consulta = self._c.table(tabla).select(columnas)
+            for col in orden:
+                consulta = consulta.order(col)
+            lote = consulta.range(len(filas), len(filas) + pagina - 1).execute().data
+            filas.extend(lote)
+            if len(lote) < pagina:
+                return filas
+
+    def listar_alumnos(self) -> list[Alumno]:
+        return [_alumno(f) for f in self._todas("alumnos", _COLS_ALUMNO + ",creado_en", ("creado_en", "id"))]
+
+    def obtener_progreso_todos(self) -> dict[str, dict[str, ProgresoTest]]:
+        por_alumno: dict[str, dict[str, ProgresoTest]] = {}
+        for f in self._todas("progreso_tests", "alumno_id,test_id,estado,version_test", ("alumno_id", "test_id")):
+            por_alumno.setdefault(f["alumno_id"], {})[f["test_id"]] = ProgresoTest(f["estado"], f["version_test"])
+        return por_alumno
+
+    def obtener_respuestas_de_test(self, test_id: str) -> dict[str, dict[str, int | None]]:
+        por_alumno: dict[str, dict[str, int | None]] = {}
+        pagina, desde = 1000, 0
+        while True:
+            lote = (self._c.table("respuestas").select("alumno_id,pregunta_id,valor").eq("test_id", test_id)
+                    .order("alumno_id").order("pregunta_id").range(desde, desde + pagina - 1).execute().data)
+            for f in lote:
+                por_alumno.setdefault(f["alumno_id"], {})[f["pregunta_id"]] = f["valor"]
+            desde += len(lote)
+            if len(lote) < pagina:
+                return por_alumno
+
+    def guardar_resultado(self, alumno_id: str, resultado: ResultadoTest, ahora: datetime) -> None:
+        puntajes, afinidad = resultado.a_json()
+        self._c.table("resultados").upsert(
+            {"alumno_id": alumno_id, "test_id": resultado.test_id, "puntajes": puntajes, "afinidad": afinidad,
+             "especialidad_principal": resultado.principal, "especialidad_secundaria": resultado.secundaria,
+             "calculado_en": ahora.isoformat()},
+            on_conflict="alumno_id,test_id").execute()
