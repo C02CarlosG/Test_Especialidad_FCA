@@ -22,7 +22,7 @@ from modules.config_loader import TestConfig
 from modules.scoring import ResultadoTest
 
 LOGOS = (Path(__file__).resolve().parent.parent / "static" / "logo_fca.png",
-         Path(__file__).resolve().parent.parent / "static" / "logo_uabjo.png")  # izquierda, derecha
+         Path(__file__).resolve().parent.parent / "static" / "logo_gestion.png")  # izquierda, derecha
 AVISO = ("Estos resultados son una guía de orientación para elegir tu especialidad; no son un "
          "diagnóstico psicológico ni una decisión obligatoria. Coméntalos con tu tutor u orientador.")
 COLORES = ("#0F1E4A", "#E5B300", "#17683F", "#B23A48")  # marino, oro, verde, granate: un color por test (hasta 4)

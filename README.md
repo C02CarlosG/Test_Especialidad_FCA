@@ -188,10 +188,14 @@ static/                 logos y tipografías, servidos con enableStaticServing
 scripts/                conversión de las calculadoras y generación de los casos de verificación
 tests/                  pruebas automáticas (golden/ = casos calculados con las hojas de Excel)
 docs/referencia/        calculadoras originales
+docs/prueba_piloto.md   lista de verificación de la prueba piloto (celulares reales)
 PLAN.md                 plan por fases y decisiones tomadas
 ```
 
 ## Licencias y créditos
 
 Los logos de la FCA y de la UABJO pertenecen a sus instituciones. Las tipografías **Fraunces** y **Plus Jakarta
-Sans** van autoalojadas y se distribuyen bajo la [SIL Open Font License 1.1](https://openfontlicense.org).
+Sans** van autoalojadas y se distribuyen bajo la [SIL Open Font License 1.1](https://openfontlicense.org); el texto de la
+licencia y el aviso de derechos de cada una están junto a los archivos, en
+[`static/fonts/OFL-Fraunces.txt`](static/fonts/OFL-Fraunces.txt) y
+[`static/fonts/OFL-PlusJakartaSans.txt`](static/fonts/OFL-PlusJakartaSans.txt).

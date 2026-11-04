@@ -36,8 +36,8 @@ def test_el_camino_marca_hecho_actual_y_pendiente():
     assert clases(h3) == ["hecho", "hecho", "hecho", "actual"]
     assert h2.count('aria-current="step"') == 1 and "Registro" in h2 and "Test 1" in h2 and "Resultados" in h2
     assert 'aria-label="Progreso de la evaluación"' in h0 and "Facultad de Contaduría y Administración" in h0
-    # un logo a cada lado: FCA a la izquierda y UABJO a la derecha, con texto alternativo
-    assert h0.index('class="logo fca"') < h0.index('class="inst"') < h0.index('class="logo uabjo"')
+    # un logo a cada lado: FCA a la izquierda y Gestión a la derecha, con texto alternativo
+    assert h0.index('class="logo fca"') < h0.index('class="inst"') < h0.index('class="logo gestion"')
     assert h0.count('src="data:image/png;base64,') == 2  # incrustados: no dependen de rutas del servidor
     assert 'alt="Facultad de Contaduría y Administración, Calidad Académica"' in h0
     assert "Universidad Autónoma Benito Juárez de Oaxaca" in h0
@@ -99,7 +99,7 @@ def test_los_logos_existen_son_ligeros_y_van_incrustados():
     import base64
     from PIL import Image
     from views import tema
-    for archivo, ancho, alto, _alt in (tema.LOGO_FCA, tema.LOGO_UABJO):
+    for archivo, ancho, alto, _alt in (tema.LOGO_FCA, tema.LOGO_GESTION):
         ruta = RAIZ / "static" / archivo
         assert ruta.is_file() and ruta.stat().st_size < 60_000
         im = Image.open(ruta)
@@ -121,3 +121,28 @@ def test_ninguna_ruta_estatica_es_absoluta():
     assert all((RAIZ / "static" / "fonts" / f.rsplit("/", 1)[1]).is_file() for f in fuentes)
     cfg = tomllib.loads((RAIZ / ".streamlit" / "config.toml").read_text())
     assert cfg["server"]["enableStaticServing"] is True
+
+
+def test_el_contenido_empieza_debajo_de_la_barra_de_streamlit():
+    """La barra superior (60 px = 3.75 rem, fija) trae «Fork», GitHub y el menú de la plataforma: si el contenido
+    empieza más arriba, el botón se encima sobre el logo. La barra lleva el color del fondo para que nada
+    se vea debajo al hacer scroll."""
+    css = (RAIZ / "views" / "tema.css").read_text(encoding="utf-8")
+    bloque = re.search(r'\[data-testid="stMainBlockContainer"\]\s*\{([^}]*)\}', css).group(1)
+    arriba = re.search(r"padding-top:\s*([\d.]+)rem", bloque)
+    assert arriba and float(arriba.group(1)) >= 3.75
+    barra = re.search(r'\[data-testid="stHeader"\]\s*\{([^}]*)\}', css).group(1)
+    assert "background: var(--bruma)" in barra and "transparent" not in barra
+
+
+def test_cada_tipografia_incluida_lleva_su_licencia_ofl():
+    """La SIL OFL exige distribuir la licencia y el aviso de derechos junto con las fuentes."""
+    fuentes = RAIZ / "static" / "fonts"
+    for familia, archivo, copyright_ in (("Fraunces", "OFL-Fraunces.txt", "The Fraunces Project Authors"),
+                                         ("Plus Jakarta Sans", "OFL-PlusJakartaSans.txt",
+                                          "The Plus Jakarta Sans Project Authors")):
+        texto = (fuentes / archivo).read_text(encoding="utf-8")
+        assert texto.startswith("Copyright") and copyright_ in texto, familia
+        assert "SIL OPEN FONT LICENSE Version 1.1" in texto, familia
+        assert "PERMISSION & CONDITIONS" in texto, familia
+    assert all(f.suffix in {".woff2", ".ttf", ".txt"} or f.is_dir() for f in fuentes.iterdir())

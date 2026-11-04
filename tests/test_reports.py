@@ -204,7 +204,7 @@ def test_el_pdf_lleva_un_logo_a_cada_lado_del_titulo(resultados, tmp_path):
     # cada logo es una imagen RGB más su máscara de transparencia (smask)
     filas = [l.split() for l in salida.splitlines()[2:] if l.strip()]  # columnas: página, n.º, tipo, ancho, alto...
     imagenes = [(f[3], f[4]) for f in filas if f[2] == "image"]
-    assert imagenes == [("165", "240"), ("204", "240")]  # FCA a la izquierda, UABJO a la derecha
+    assert imagenes == [("165", "240"), ("240", "240")]  # FCA a la izquierda, Gestión a la derecha
     assert sum(f[2] == "smask" for f in filas) == 2  # el fondo transparente se conserva
 
 
@@ -214,7 +214,7 @@ def test_el_excel_individual_lleva_los_logos_a_cada_lado_en_todas_las_hojas(resu
         assert len(ws._images) == 2, ws.title
         izq, der = sorted(ws._images, key=lambda i: (i.anchor._from.col, i.anchor._from.colOff))
         assert izq.anchor._from.col == 0 and izq.anchor._from.row == 0           # FCA arriba a la izquierda
-        assert der.anchor._from.col == (3 if ws.title == "Resumen" else 6)       # UABJO en la última columna usada
+        assert der.anchor._from.col == (3 if ws.title == "Resumen" else 6)       # Gestión en la última columna usada
         px = lambda i: (round(i.anchor.ext.width / 9525), round(i.anchor.ext.height / 9525))  # noqa: E731
         assert px(izq) == (45, 66) and px(der)[1] == 66                          # misma altura, proporción conservada
         assert ws.cell(OFF + 1, 1).value  # el contenido bajó para no quedar debajo de los logos
