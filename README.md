@@ -18,7 +18,8 @@ Hecha con [Streamlit](https://streamlit.io) y [Supabase](https://supabase.com) (
 2. Contesta los tests **en orden**, en bloques de 10 preguntas, con barra de avance. **Todas las preguntas son
    obligatorias**; cada bloque se guarda al continuar.
 3. Si recarga la página, vuelve a escribir su matrícula y nombre y **continúa donde se quedó**.
-4. Al terminar ve su 1ª y 2ª opción de cada test, una vista conjunta y puede **descargar su PDF y su Excel**.
+4. Al terminar ve su **hoja de resultados** (alcance, resumen de convergencia, gráficas Big Five y por campo, diagnóstico
+   orientativo y rutas) y puede **descargar su PDF y su Excel**.
    Esa pantalla es la única vez que los ve: al cerrarla, el docente se los entrega desde el panel.
 
 **Docente** (ruta oculta `/admin`, con contraseña)
@@ -91,6 +92,9 @@ nombre de archivo, que además es el id del test (minúsculas, números, `_` o `
 | `niveles` | `ambito` (`categoria`/`afinidad`), `minimo` (0 a 1), `etiqueta` | Opcional |
 | `afinidad` | `codigo`, `nombre`, `componentes` (p. ej. `APERTURA+EXTRAVERSION`), `descripcion` | Opcional |
 
+- En `especialidades`, la columna opcional `requisito` (p. ej. «un dominio mínimo de inglés de nivel B1») sale como
+  nota en la hoja de resultados cuando esa especialidad es la 1.ª o la 2.ª opción. En el test de rasgos (Big Five),
+  `descripcion` es la frase de «Cómo se ven tus rasgos».
 - Si falta una hoja, hay IDs repetidos o una pregunta apunta a una especialidad inexistente, la app **lo dice con
   todos los errores juntos** (el docente los ve en los registros; el alumno ve un aviso genérico).
 - **Cambiar preguntas o escala mientras hay alumnos contestando** los bloquea con un aviso, porque sus respuestas
@@ -113,6 +117,12 @@ casos recalculados en LibreOffice (`scripts/generar_golden_scoring.py`, `tests/g
   todas sus respuestas son SE, la especialidad queda «sin datos» y fuera del ranking.
 - **Test 1 (Big Five):** se califica por dimensión y se calcula la afinidad con cada especialidad de la carrera
   (p. ej. Mercadotecnia = Apertura + Extraversión).
+- La **hoja de resultados** ([`modules/interpretacion.py`](modules/interpretacion.py)) une los dos tests cuando uno tiene
+  hoja `afinidad` (rasgos) y el otro no (competencias): el promedio de ambos ordena los campos; el **índice de
+  alineación** es la parte de los rasgos que pide el campo dominante que están en el nivel más alto (75 % o más:
+  alta; 50 %: moderada; menos: baja); la **confianza** es «moderada» con empate técnico o «sin experiencia» en el campo
+  dominante, y «alta» con 15 puntos de margen y tests que coinciden. Pantalla, PDF y Excel leen el mismo informe. Con
+  un solo test se usa la vista genérica de antes.
 - La **vista conjunta** compara las especialidades comunes de los tests y promedia los que tienen dato; es una
   lectura orientativa, no un puntaje oficial.
 
@@ -179,8 +189,8 @@ truncate public.resultados, public.respuestas, public.progreso_tests,
 
 ```
 app.py                  entrada: "/" alumno, "/admin" docente (st.navigation oculta)
-views/                  pantallas: alumno.py, test.py, admin.py, paginas.py, tema.py y tema.css (diseño)
-modules/                lógica: acceso, avance, scoring, panel, reports, reports_admin, admin_auth,
+views/                  pantallas: alumno.py, test.py, informe.py (hoja de resultados), admin.py, paginas.py, tema.py y tema.css (diseño)
+modules/                lógica: acceso, avance, scoring, interpretacion, graficas, panel, reports, reports_admin, admin_auth,
                         security, qr_utils, config_loader, db (única capa que habla con Supabase)
 config/                 aviso_privacidad.md y tests/*.xlsx
 sql/                    01_esquema.sql y 02_rls.sql

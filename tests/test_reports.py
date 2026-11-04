@@ -69,8 +69,8 @@ def test_pdf_es_valido_y_contiene_los_datos(resultados):
     if not shutil.which("pdftotext"):
         pytest.skip("pdftotext no está instalado: solo se validó la estructura del PDF")
     texto = subprocess.run(["pdftotext", "-layout", "-", "-"], input=pdf, capture_output=True, check=True).stdout.decode()
-    for esperado in ("123456", "Ana Pérez López", "Test 1: The Big Five", "Vista conjunta", "15/10/2026",
-                     "no son un diagnóstico", "Test 2: Administration Specialties"):
+    for esperado in ("123456", "Ana Pérez López", "Test 1: The Big Five", "Dónde coinciden tus dos tests", "15/10/2026",
+                     "no constituyen un diagnóstico", "Test 2: Administration Specialties"):
         assert esperado in texto
     for e in resultados[0].especialidades:
         assert e.nombre in texto
@@ -89,7 +89,7 @@ def test_pdf_con_un_test_sin_principal_no_falla():
 
 def test_excel_hojas_y_valores(resultados):
     wb = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST1, TEST2], resultados, FECHA)))
-    assert wb.sheetnames == ["Resumen", "Test 1", "Test 2"]
+    assert wb.sheetnames == ["Resumen", "Diagnóstico", "Test 1", "Test 2"]
     resumen = {fila[0].value: fila[1].value for fila in wb["Resumen"].iter_rows(min_row=OFF + 3, max_row=OFF + 7)}
     assert resumen["Matrícula"] == "123456" and resumen["Alumno"] == "Ana Pérez López"
     h1 = wb["Test 1"]
@@ -211,10 +211,11 @@ def test_el_pdf_lleva_un_logo_a_cada_lado_del_titulo(resultados, tmp_path):
 def test_el_excel_individual_lleva_los_logos_a_cada_lado_en_todas_las_hojas(resultados):
     wb = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST1, TEST2], resultados, FECHA)))
     for ws in wb.worksheets:
-        assert len(ws._images) == 2, ws.title
-        izq, der = sorted(ws._images, key=lambda i: (i.anchor._from.col, i.anchor._from.colOff))
+        logos = [i for i in ws._images if i.anchor._from.row == 0]  # las gráficas del Resumen van más abajo
+        assert len(logos) == 2, ws.title
+        izq, der = sorted(logos, key=lambda i: (i.anchor._from.col, i.anchor._from.colOff))
         assert izq.anchor._from.col == 0 and izq.anchor._from.row == 0           # FCA arriba a la izquierda
-        assert der.anchor._from.col == (3 if ws.title == "Resumen" else 6)       # Gestión en la última columna usada
+        assert der.anchor._from.col == (3 if ws.title in ("Resumen", "Diagnóstico") else 6)       # Gestión en la última columna usada
         px = lambda i: (round(i.anchor.ext.width / 9525), round(i.anchor.ext.height / 9525))  # noqa: E731
         assert px(izq) == (45, 66) and px(der)[1] == 66                          # misma altura, proporción conservada
         assert ws.cell(OFF + 1, 1).value  # el contenido bajó para no quedar debajo de los logos
@@ -225,6 +226,6 @@ def test_el_excel_individual_lleva_los_logos_a_cada_lado_en_todas_las_hojas(resu
 def test_el_excel_conserva_las_celdas_combinadas_y_alturas_tras_mover_el_contenido(resultados):
     ws = openpyxl.load_workbook(io.BytesIO(excel_individual(alumno(), [TEST1, TEST2], resultados, FECHA)))["Resumen"]
     unidas = [str(r) for r in ws.merged_cells.ranges]
-    assert unidas == [f"A{9 + OFF}:D{9 + OFF}"]          # el aviso sigue combinado (A9:D9 antes del cambio)
-    assert ws.row_dimensions[9 + OFF].height == 48 and ws.row_dimensions[9].height is None
-    assert ws.cell(9 + OFF, 1).value.startswith("Estos resultados son una guía")
+    assert f"A{9 + OFF}:D{9 + OFF}" in unidas            # el alcance sigue combinado (A9:D9 antes del cambio)
+    assert ws.row_dimensions[9 + OFF].height == 78 and ws.row_dimensions[9].height is None
+    assert ws.cell(9 + OFF, 1).value.startswith("Los resultados de esta evaluación")

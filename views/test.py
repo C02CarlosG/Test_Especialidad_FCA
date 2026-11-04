@@ -17,10 +17,11 @@ from modules.acceso import Alumno
 from modules.avance import (AvanceError, Posicion, RepositorioAvance, calcular_posicion,
                             guardar_bloque)
 from modules.config_loader import TestConfig
+from modules.interpretacion import construir as construir_informe
 from modules.reports import AVISO, excel_individual, grafica_radar, pdf_individual, vista_conjunta
 from modules.resultados import resultados_del_alumno
 from modules.scoring import ResultadoTest
-from views import tema
+from views import informe as vista_informe, tema
 
 log = logging.getLogger(__name__)
 ZONA = ZoneInfo("America/Mexico_City")
@@ -62,8 +63,23 @@ def _nota(r: ResultadoTest) -> str | None:
     return None
 
 
+def _descargas(alumno: Alumno, archivos: dict) -> None:
+    st.info("Descarga tus resultados ahora: al cerrar esta página ya no podrás volver a consultarlos aquí.")
+    c1, c2 = st.columns(2)
+    c1.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
+                       mime="application/pdf", width="stretch", type="primary", on_click="ignore")
+    c2.download_button("Descargar Excel", archivos["xlsx"], file_name=f"resultados_{alumno.matricula}.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                       width="stretch", on_click="ignore")
+
+
 def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados: list[ResultadoTest],
                         archivos: dict) -> None:
+    inf = construir_informe(tests, resultados)
+    if inf is not None:
+        vista_informe.mostrar(alumno, inf, datetime.now(ZONA), archivos)
+        _descargas(alumno, archivos)
+        return
     st.subheader("Tus resultados")
     st.caption(AVISO)
     vc = vista_conjunta(resultados)
@@ -99,13 +115,7 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
                 tema.tabla(["Especialidad", "Afinidad", "Nivel"],
                            [[escape(a.nombre), tema.porcentaje(a.porcentaje), tema.chip(a.nivel)] for a in r.afinidades],
                            numericas=[1])
-    st.info("Descarga tus resultados ahora: al cerrar esta página ya no podrás volver a consultarlos aquí.")
-    c1, c2 = st.columns(2)
-    c1.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
-                       mime="application/pdf", width="stretch", type="primary", on_click="ignore")
-    c2.download_button("Descargar Excel", archivos["xlsx"], file_name=f"resultados_{alumno.matricula}.xlsx",
-                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                       width="stretch", on_click="ignore")
+    _descargas(alumno, archivos)
 
 
 def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool) -> None:

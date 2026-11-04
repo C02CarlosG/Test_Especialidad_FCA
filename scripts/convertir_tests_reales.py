@@ -22,8 +22,19 @@ CODIGOS_ESPECIALIDAD = {"Mercadotecnia": "MKT", "Capital Humano": "CH", "Adminis
                         "Negocios Internacionales": "NI", "Emprendimiento": "EMP"}
 
 
+# Textos que la hoja de resultados muestra y que no vienen de las calculadoras (revisar con un orientador).
+DESCRIPCION_RASGOS = {
+    "APERTURA": "Curiosidad, creatividad y gusto por lo nuevo. Disfrutas explorar ideas distintas a las habituales.",
+    "RESPONSABILIDAD": "Orden, constancia y cumplimiento. Sueles terminar lo que empiezas y cuidar los detalles.",
+    "EXTRAVERSION": "Energía en lo social. Se relaciona con la comodidad al hablar, proponer y liderar con otras personas.",
+    "AMABILIDAD": "Cooperación y empatía. Equilibras tus intereses con los del grupo.",
+    "ESTABILIDAD": "Manejo de la presión. Refleja tu resiliencia y tu objetividad cuando hay tensión.",
+}
+REQUISITOS = {"NI": "un dominio mínimo de inglés de nivel B1 o equivalente"}  # columna opcional «requisito» del test 2
+
+
 def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escala,
-             niveles, afinidades=None) -> None:
+             niveles, afinidades=None, requisitos=None) -> None:
     hojas = {
         "info": pd.DataFrame([("titulo", titulo), ("instrucciones", instrucciones)],
                              columns=["clave", "valor"]),
@@ -37,6 +48,8 @@ def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escal
     if afinidades:
         hojas["afinidad"] = pd.DataFrame(
             afinidades, columns=["codigo", "nombre", "componentes", "descripcion"])
+    if requisitos:
+        hojas["especialidades"]["requisito"] = hojas["especialidades"]["codigo"].map(requisitos).fillna("")
     with pd.ExcelWriter(ruta, engine="openpyxl") as w:
         for nombre, df in hojas.items():
             df.to_excel(w, sheet_name=nombre, index=False)
@@ -54,7 +67,7 @@ def test_1() -> None:
                  for r in range(9, 34)]
     # Las 5 "especialidades" de este test son las dimensiones OCEAN; su relación con las
     # especialidades de la carrera (p. ej. Mercadotecnia = Apertura + Extraversión) se calcula en la Fase 4.
-    esp = [(c, n, "", "") for n, c in dims.items()]
+    esp = [(c, n, DESCRIPCION_RASGOS[c], "") for n, c in dims.items()]
     escala = []
     for parte in ws["A6"].value.split("|"):
         valor, etiqueta = parte.split("=")
@@ -97,7 +110,7 @@ def test_2() -> None:
     instrucciones = ws["A10"].value.split("\n")[0].strip()
     escribir(DESTINO / "2_test_orientacion_especialidades.xlsx",
              "Test 2: Administration Specialties", instrucciones, esp, preguntas, escala,
-             niveles)
+             niveles, requisitos=REQUISITOS)
 
 
 if __name__ == "__main__":
