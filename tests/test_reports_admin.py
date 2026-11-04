@@ -25,7 +25,7 @@ def _libro(panel_):
 
 
 def test_hojas_del_concentrado(panel):
-    assert _libro(panel).sheetnames == ["Resumen", "Alumnos", "Test 1", "Test 2", "Respuestas"]
+    assert _libro(panel).sheetnames == ["Resumen", "Alumnos", "Resultados", "Respuestas"]
 
 
 def test_resumen_cuenta_alumnos_y_primeras_opciones(panel):
@@ -47,12 +47,20 @@ def test_hoja_alumnos_incluye_a_todos_con_su_estado(panel):
     assert "En curso" in beto and "10 de 25" in beto and "Terminado" in beto
 
 
-def test_hoja_de_test_solo_trae_a_quien_tiene_resultado_con_porcentajes_numericos(panel):
-    h1, h2 = _libro(panel)["Test 1"], _libro(panel)["Test 2"]
-    assert {f[0].value for f in h1.iter_rows(min_row=2)} == {"100001", "100002"}
-    assert {f[0].value for f in h2.iter_rows(min_row=2)} == {"100001"}
-    primera = [c for c in h2[2]][8]
-    assert isinstance(primera.value, (int, float)) and primera.number_format == "0.0%"
+def test_el_concentrado_nunca_pasa_de_cuatro_hojas(panel):
+    assert len(_libro(panel).sheetnames) <= 4
+
+
+def test_hoja_resultados_junta_los_tests_y_solo_trae_a_quien_tiene_resultado(panel):
+    ws = _libro(panel)["Resultados"]
+    cab = [c.value for c in ws[1]]
+    assert {f[0].value for f in ws.iter_rows(min_row=2)} == {"100001", "100002"}
+    assert any(h.startswith("Test 1 · ") for h in cab) and any(h.startswith("Test 2 · ") for h in cab)
+    fila = {cab[j]: c.value for j, c in enumerate(next(f for f in ws.iter_rows(min_row=2) if f[0].value == "100001"))}
+    por_test2 = [h for h in cab if h.startswith("Test 2 · ") and h.endswith("(%)")]
+    assert por_test2 and all(isinstance(fila[h], (int, float)) for h in por_test2)  # el alumno 1 terminó el test 2
+    beto = {cab[j]: c.value for j, c in enumerate(next(f for f in ws.iter_rows(min_row=2) if f[0].value == "100002"))}
+    assert all(beto[h] is None for h in por_test2)  # el alumno 2 no tiene resultado del test 2: celdas vacías
 
 
 def test_hoja_respuestas_es_un_respaldo_completo():
@@ -137,7 +145,7 @@ def test_panel_y_calificacion_ignoran_tests_retirados():
 def test_el_concentrado_lleva_logos_solo_en_la_portada(panel):
     wb = _libro(panel)
     assert len(wb["Resumen"]._images) == 2
-    for nombre in ("Alumnos", "Test 1", "Test 2", "Respuestas"):
+    for nombre in ("Alumnos", "Resultados", "Respuestas"):
         assert len(wb[nombre]._images) == 0                      # las hojas de datos empiezan en la fila 1
         assert wb[nombre].cell(1, 1).value in ("Matrícula",)     # encabezado en la fila 1: filtros y tablas dinámicas
     assert wb["Resumen"].cell(OFF + 1, 1).value == "Evaluación Diagnóstica FCA - Concentrado"

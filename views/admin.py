@@ -148,7 +148,7 @@ def _pestana_descargas(repo, panel: PanelDatos) -> None:
                        _vigente(lambda: zip_pdfs(panel, fecha)[0]), file_name=f"pdfs_{sello}.zip", mime="application/zip",
                        width="stretch", on_click="ignore",
                        disabled=not any(f.completo for f in panel.filas))
-    st.caption("El concentrado trae una hoja por test y la hoja «Respuestas», que sirve de respaldo "
+    st.caption("El concentrado trae las hojas Resumen, Alumnos, Resultados (todos los tests juntos) y «Respuestas», que sirve de respaldo "
                "de la base de datos: descárgalo al cerrar cada aplicación.")
 
     st.markdown("**Un alumno**")

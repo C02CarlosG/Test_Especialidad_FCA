@@ -232,11 +232,11 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
     normal, negrita, titulos = marca if marca else (respaldo, respaldo_neg, respaldo_neg)
     tinta = colors.HexColor("#1E2A4A")
     h1 = ParagraphStyle("h1", parent=base["Title"], fontName=titulos, fontSize=20, leading=24, textColor=azul, spaceAfter=2)
-    h2 = ParagraphStyle("h2", parent=base["Heading2"], fontName=titulos, fontSize=14, textColor=azul, spaceBefore=14,
-                        spaceAfter=5)
+    h2 = ParagraphStyle("h2", parent=base["Heading2"], fontName=titulos, fontSize=14, textColor=azul, spaceBefore=9,
+                        spaceAfter=4)
     h3 = ParagraphStyle("h3", parent=base["Heading3"], fontName=negrita, fontSize=8, leading=10,
                         textColor=colors.HexColor("#5A6788"))
-    cuerpo = ParagraphStyle("c", parent=base["BodyText"], fontName=normal, fontSize=9.5, leading=13.5, textColor=tinta)
+    cuerpo = ParagraphStyle("c", parent=base["BodyText"], fontName=normal, fontSize=9.5, leading=12.6, textColor=tinta)
     chico = ParagraphStyle("s", parent=cuerpo, fontSize=8.5, textColor=colors.HexColor("#5A6788"))
     celda = ParagraphStyle("t", parent=cuerpo, fontSize=8.3, leading=11)
     celda_cab = ParagraphStyle("tc", parent=celda, fontName=negrita, textColor=colors.white)
@@ -258,16 +258,19 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         estilo = [("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#D6DDEB")),
                   ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                   ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-                  ("TOPPADDING", (0, 0), (-1, -1), 4.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 4.5)]
+                  ("TOPPADDING", (0, 0), (-1, -1), 3.4), ("BOTTOMPADDING", (0, 0), (-1, -1), 3.4)]
         if cabecera:
             estilo += [("BACKGROUND", (0, 0), (-1, 0), azul),
                        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F7FC")])]
         else:
             estilo += [("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F4F7FC"))]
+            if len(anchos) == 4:
+                estilo += [("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#F4F7FC"))]
         t.setStyle(TableStyle(estilo))
         return t
 
-    ancho = letter[0] - 4 * cm
+    margen = 1.5 * cm
+    ancho = letter[0] - 2 * margen
 
     informe = construir_informe(tests, resultados)
 
@@ -337,19 +340,19 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
             mitad = ancho / 2 - 6
             celdas = [[pn("Resultados Big Five (OCEAN)", "", ParagraphStyle("gt", parent=cuerpo, alignment=1)),
                        pn("Orientación por campo formativo", "", ParagraphStyle("gt2", parent=cuerpo, alignment=1))],
-                      [imagen(g1, 6.2 * cm) if g1 else "", imagen(g2, 6.8 * cm) if g2 else ""],
+                      [imagen(g1, 6.3 * cm) if g1 else "", imagen(g2, 7.0 * cm) if g2 else ""],
                       [p("Tus factores más altos son fortalezas conductuales; los más bajos, áreas con espacio para crecer.", chico),
                        p("En verde, el campo con más puntos en este test: un puntaje alto indica que realizas esas actividades con más autonomía. Es una guía orientativa, no determinista.", chico)]]
             tg = Table(celdas, colWidths=[ancho / 2, ancho / 2])
             tg.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (0, 1), (-1, 1), "CENTER"),
                                     ("TOPPADDING", (0, 0), (-1, -1), 4), ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#F6F8FC"))]))
-            out += [Spacer(1, 10), KeepTogether([tg])]
+            out += [Spacer(1, 4), KeepTogether([tg])]
         out += [KeepTogether([p("Cómo se ven tus rasgos", h2),
                 tabla([["Rasgo", "Porcentaje", "Nivel", "Qué significa"]] +
                       [[r.nombre, pct(r.porcentaje), r.nivel or "—", r.descripcion] for r in inf.rasgos],
                       [ancho * 0.2, ancho * 0.13, ancho * 0.17, ancho * 0.5])])]
         gc = grafica_convergencia(inf)
-        out.append(KeepTogether([p("Dónde coinciden tus dos tests", h2)] + ([imagen(gc, ancho * 0.86)] if gc else [])
+        out.append(KeepTogether([p("Dónde coinciden tus dos tests", h2)] + ([imagen(gc, ancho * 0.98)] if gc else [])
                                 + ([Spacer(1, 4), p(inf.lectura, chico)] if inf.lectura else [])))
         out += [p("Diagnóstico orientativo del campo formativo", h2), pn("Análisis de afinidad y competencias"), p(inf.analisis),
                 p("Fortalezas proyectadas", ParagraphStyle("fv", parent=h3, fontSize=10, textColor=colors.HexColor("#17803F"), spaceBefore=6))]
@@ -368,10 +371,10 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         return out
 
     historia = [_encabezado_pdf(p, h1, h3, ancho),
-                tabla([["Alumno", alumno.nombre_completo], ["Matrícula", alumno.matricula],
-                       ["Semestre", str(alumno.semestre) if alumno.semestre else "—"], ["Edad", str(alumno.edad)],
-                       ["Tutor / orientador", alumno.tutor],
-                       ["Fecha", fecha.strftime("%d/%m/%Y")]], [4 * cm, ancho - 4 * cm], cabecera=False),
+                tabla([["Alumno", alumno.nombre_completo, "Matrícula", alumno.matricula],
+                       ["Semestre", str(alumno.semestre) if alumno.semestre else "—", "Edad", str(alumno.edad)],
+                       ["Tutor / orientador", alumno.tutor, "Fecha", fecha.strftime("%d/%m/%Y")]],
+                      [3.1 * cm, ancho / 2 - 3.1 * cm, 2.3 * cm, ancho / 2 - 2.3 * cm], cabecera=False),
                 Spacer(1, 6)]
     if informe is not None:
         historia += _bloques_informe(informe)
@@ -430,8 +433,8 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
                      p(SUBTITULO_CIERRE, ParagraphStyle("cs", parent=cuerpo, alignment=1, textColor=colors.HexColor("#5A6788"), fontSize=10.5))]
 
     buf = io.BytesIO()
-    SimpleDocTemplate(buf, pagesize=letter, leftMargin=2 * cm, rightMargin=2 * cm, topMargin=2 * cm,
-                      bottomMargin=2 * cm, title=f"Resultados {alumno.matricula}",
+    SimpleDocTemplate(buf, pagesize=letter, leftMargin=margen, rightMargin=margen, topMargin=1.5 * cm,
+                      bottomMargin=1.5 * cm, title=f"Resultados {alumno.matricula}",
                       author="Evaluación Diagnóstica FCA").build(historia)
     return buf.getvalue()
 

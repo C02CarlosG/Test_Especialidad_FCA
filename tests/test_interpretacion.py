@@ -80,6 +80,15 @@ def test_sin_datos_en_los_dos_tests_no_hay_ranking_ni_informe():
     assert construir([TEST1, TEST2], _resultados(t2=todo_se)) is None
 
 
+def test_lectura_de_campo_coinciden_con_cinco_puntos_o_menos():
+    from modules.interpretacion import lectura_campo
+    inf = construir([TEST1, TEST2], _resultados())
+    for c in inf.campos:
+        texto, coincide = lectura_campo(c)
+        assert coincide == (c.distancia <= Fraction(5, 100))
+        assert texto == "Coinciden" or texto == f"Difieren {round(float(c.distancia) * 100)} pts"
+
+
 def test_las_graficas_son_png():
     inf = construir([TEST1, TEST2], _resultados())
     for g in (grafica_ocean, grafica_campos, grafica_convergencia):
@@ -139,7 +148,8 @@ def test_la_pantalla_muestra_la_hoja_de_resultados_con_los_dos_tests_reales():
                      "Fortalezas proyectadas", "El desafío de la elección: más allá del interés", "Ana Pérez López"):
         assert esperado in html
     assert ALCANCE in html.replace("&#x27;", "'")
-    assert len(at.get("image")) >= 3
+    assert len(at.get("image")) >= 2  # radar y barras; la convergencia es una tabla HTML
+    assert "Difieren" in html or "Coinciden" in html
 
 
 def test_el_nombre_del_alumno_se_escapa_en_la_pantalla():

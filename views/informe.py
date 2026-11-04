@@ -12,8 +12,8 @@ from typing import Sequence
 import streamlit as st
 
 from modules.acceso import Alumno
-from modules.graficas import grafica_campos, grafica_convergencia, grafica_ocean
-from modules.interpretacion import ALCANCE, SUBTITULO_CIERRE, TITULO_CIERRE, Campo, Informe
+from modules.graficas import grafica_campos, grafica_ocean
+from modules.interpretacion import ALCANCE, SUBTITULO_CIERRE, TITULO_CIERRE, Campo, Informe, lectura_campo
 from modules.reports import pct
 from views import tema
 
@@ -91,10 +91,14 @@ def mostrar(alumno: Alumno, informe: Informe, fecha: datetime, cache: dict) -> N
                 for r in informe.rasgos], numericas=[1])
 
     _titulo("Dónde coinciden tus dos tests",
-            "Si los puntos están cerca, la señal es más sólida; el número es el promedio de ambos tests.")
-    png = grafica('g_conv', grafica_convergencia)
-    if png:
-        st.image(png)
+            "Si personalidad y competencias son parecidas, la señal es más sólida; el promedio ordena los campos.")
+    def lectura(c: Campo) -> str:
+        texto, coincide = lectura_campo(c)
+        return f'<span class="chip {"alto" if coincide else "medio"}">{escape(texto)}</span>'
+
+    tema.tabla(["Campo formativo", "Personalidad", "Competencias", "Promedio", "Lectura"],
+               [[escape(c.nombre), tema.porcentaje(c.por_rasgos), tema.porcentaje(c.por_competencias),
+                 tema.porcentaje(c.promedio), lectura(c)] for c in informe.ranking], numericas=[1, 2, 3])
     if informe.lectura:
         st.html(f'<div class="inf pie">{escape(informe.lectura)}</div>')
 

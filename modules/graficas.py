@@ -4,7 +4,7 @@ from __future__ import annotations
 import io
 from math import pi
 
-from modules.interpretacion import Informe
+from modules.interpretacion import Informe, lectura_campo
 
 MARINO, MARINO_2, ORO, AZUL, VERDE, PIZARRA, LINEA, TINTA = (
     "#0F1E4A", "#1B2F6B", "#E5B300", "#2552D0", "#2FB35F", "#A9B4CE", "#D6DDEB", "#1E2A4A")
@@ -81,31 +81,40 @@ def grafica_campos(informe: Informe) -> bytes | None:
 
 
 def grafica_convergencia(informe: Informe) -> bytes | None:
-    """Un punto por test y campo (rasgos ● competencias ●) unidos por una línea: cuanto más cerca, más firme."""
+    """Tabla con barras: personalidad, competencias y promedio por campo, y si los dos tests coinciden."""
     campos = list(informe.ranking)
     if not campos:
         return None
     plt = _mpl()
-    fig, ax = plt.subplots(figsize=(6.4, 0.62 * len(campos) + 1.1))
+    from matplotlib.patches import FancyBboxPatch, Rectangle
+    n = len(campos)
+    fig, ax = plt.subplots(figsize=(8.4, 0.62 * n + 1.0))
+    ax.axis("off")
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, n + 1.1)
+    ax.add_patch(Rectangle((0, n + 0.1), 100, 0.9, color=MARINO))
+    ax.text(1.5, n + 0.55, "Campo formativo", color="w", fontsize=9.5, fontweight="bold", va="center")
+    columnas = ((34, "Personalidad"), (51, "Competencias"), (68, "Promedio"), (85, "Lectura"))
+    for x, t in columnas:
+        ax.text(x, n + 0.55, t, color="w", fontsize=9.5, fontweight="bold", va="center")
+
+    def barra(x, y, v, color):
+        if v is None:
+            ax.text(x, y, "Sin datos", fontsize=8.5, va="center", color="#5A6788")
+            return
+        pct = float(v) * 100
+        ax.add_patch(FancyBboxPatch((x, y - 0.12), 10, 0.24, boxstyle="round,pad=0,rounding_size=0.12", fc="#E3E9F4", ec="none"))
+        ax.add_patch(FancyBboxPatch((x, y - 0.12), 10 * min(pct, 100) / 100, 0.24, boxstyle="round,pad=0,rounding_size=0.12", fc=color, ec="none"))
+        ax.text(x + 10.8, y, f"{round(pct)} %", fontsize=9, va="center", color=MARINO)
+
     for i, c in enumerate(campos):
-        y = len(campos) - 1 - i
-        if c.por_rasgos is not None and c.por_competencias is not None:
-            ax.plot([float(c.por_rasgos) * 100, float(c.por_competencias) * 100], [y, y], color=MARINO_2, alpha=0.35, linewidth=3, zorder=1)
-        if c.por_rasgos is not None:
-            ax.scatter(float(c.por_rasgos) * 100, y, s=95, color=ORO, edgecolor="white", linewidth=1.5, zorder=3)
-        if c.por_competencias is not None:
-            ax.scatter(float(c.por_competencias) * 100, y, s=95, color=MARINO_2, edgecolor="white", linewidth=1.5, zorder=3)
-        ax.text(103, y, f"{float(c.promedio) * 100:.0f} %", va="center", fontsize=9.5, fontweight="bold", color=MARINO)
-    ax.set_yticks(range(len(campos)))
-    ax.set_yticklabels([c.nombre for c in reversed(campos)], fontsize=9, color=MARINO)
-    ax.set_xlim(0, 112)
-    ax.set_xticks([0, 25, 50, 75, 100])
-    ax.set_xticklabels(["0 %", "25 %", "50 %", "75 %", "100 %"], fontsize=8, color="#5A6788")
-    ax.grid(axis="x", color="#E1E6F0")
-    ax.set_axisbelow(True)
-    for lado in ("top", "right", "left"):
-        ax.spines[lado].set_visible(False)
-    ax.scatter([], [], s=70, color=ORO, label="Personalidad (test de rasgos)")
-    ax.scatter([], [], s=70, color=MARINO_2, label="Competencias (test de competencias)")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.45, -0.12), ncol=2, fontsize=8, frameon=False)
+        y = n - i - 0.4
+        if i % 2 == 0:
+            ax.add_patch(Rectangle((0, y - 0.5), 100, 1, color="#F6F8FD", zorder=0))
+        ax.text(1.5, y, c.nombre, fontsize=9, fontweight="bold", color=MARINO, va="center")
+        barra(34, y, c.por_rasgos, ORO)
+        barra(51, y, c.por_competencias, MARINO_2)
+        barra(68, y, c.promedio, VERDE if i == 0 else PIZARRA)
+        texto, coincide = lectura_campo(c)
+        ax.text(85, y, texto, fontsize=8.5, va="center", fontweight="bold", color="#17803F" if coincide else "#8A5A00")
     return _png(fig)

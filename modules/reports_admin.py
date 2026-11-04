@@ -40,7 +40,7 @@ def _fecha(valor: datetime | None) -> str:
 
 
 def excel_concentrado(panel: PanelDatos, fecha: datetime) -> bytes:
-    """Hojas: Resumen, Alumnos, una por test con todos los puntajes y Respuestas (respaldo)."""
+    """Cuatro hojas: Resumen, Alumnos, Resultados (todos los tests juntos) y Respuestas (respaldo)."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
@@ -114,44 +114,51 @@ def excel_concentrado(panel: PanelDatos, fecha: datetime) -> bytes:
             ws.cell(i, c, v)
     ws.freeze_panes = "B2"
 
-    # --- una hoja por test ---
-    for n, t in enumerate(panel.tests):
-        ws = wb.create_sheet(f"Test {n + 1}")
+    # --- Resultados: todos los tests en una sola hoja (así el libro nunca pasa de 4 hojas) ---
+    ws = wb.create_sheet("Resultados")
+    cab_h = list(cols_alumno)
+    for t in panel.tests:
         areas = [e.nombre for e in t.especialidades]
         afins = [a.nombre for a in t.afinidades]
-        cab_h = cols_alumno + [f"{x} (%)" for x in areas] + [f"{x} - nivel" for x in areas] + \
-                [f"Exploración: {x}" for x in areas] + [f"Afinidad {x} (%)" for x in afins] + \
-                [f"Afinidad {x} - nivel" for x in afins] + ["1ª opción", "2ª opción", "Empate técnico"]
-        encabezado(ws, 1, cab_h)
-        i = 1
-        for f in panel.filas:
-            r: ResultadoTest | None = f.resultados[n]
-            if r is None:
-                continue
-            i += 1
-            for c, v in enumerate(datos_alumno(f.alumno), start=1):
-                ws.cell(i, c, v)
-            c = len(cols_alumno)
-            for e in r.especialidades:
-                c += 1
-                porcentaje(ws, i, c, e.porcentaje)
-            for e in r.especialidades:
-                c += 1
-                ws.cell(i, c, e.nivel or "—")
-            for e in r.especialidades:
-                c += 1
-                ws.cell(i, c, "Sí" if e.requiere_exploracion else "No")
-            if t.afinidades:
-                for a in r.afinidades:
-                    c += 1
-                    porcentaje(ws, i, c, a.porcentaje)
-                for a in r.afinidades:
-                    c += 1
-                    ws.cell(i, c, a.nivel or "—")
-            ws.cell(i, c + 1, _nombre_de(r, r.principal))
-            ws.cell(i, c + 2, _nombre_de(r, r.secundaria))
-            ws.cell(i, c + 3, "Sí" if r.empate_tecnico else "No")
-        ws.freeze_panes = "E2"
+        p = t.titulo.split(":")[0].strip()  # «Test 1»
+        cab_h += ([f"{p} · {x} (%)" for x in areas] + [f"{p} · {x} - nivel" for x in areas] +
+                  [f"{p} · exploración: {x}" for x in areas] + [f"{p} · afinidad {x} (%)" for x in afins] +
+                  [f"{p} · afinidad {x} - nivel" for x in afins] +
+                  [f"{p} · 1ª opción", f"{p} · 2ª opción", f"{p} · empate técnico"])
+    encabezado(ws, 1, cab_h)
+    i = 1
+    for f in panel.filas:
+        if all(r is None for r in f.resultados):
+            continue  # sin ningún test calificado todavía: está en la hoja Alumnos
+        i += 1
+        for c, v in enumerate(datos_alumno(f.alumno), start=1):
+            ws.cell(i, c, v)
+        c = len(cols_alumno)
+        for t, r in zip(panel.tests, f.resultados):
+            ancho = 3 * len(t.especialidades) + (2 * len(t.afinidades) if t.afinidades else 0) + 3
+            if r is not None:
+                k = c
+                for e in r.especialidades:
+                    k += 1
+                    porcentaje(ws, i, k, e.porcentaje)
+                for e in r.especialidades:
+                    k += 1
+                    ws.cell(i, k, e.nivel or "—")
+                for e in r.especialidades:
+                    k += 1
+                    ws.cell(i, k, "Sí" if e.requiere_exploracion else "No")
+                if t.afinidades:
+                    for a in r.afinidades:
+                        k += 1
+                        porcentaje(ws, i, k, a.porcentaje)
+                    for a in r.afinidades:
+                        k += 1
+                        ws.cell(i, k, a.nivel or "—")
+                ws.cell(i, k + 1, _nombre_de(r, r.principal))
+                ws.cell(i, k + 2, _nombre_de(r, r.secundaria))
+                ws.cell(i, k + 3, "Sí" if r.empate_tecnico else "No")
+            c += ancho
+    ws.freeze_panes = "E2"
 
     # --- Respuestas (respaldo en formato largo; trae TODO lo guardado, aunque el test ya no exista) ---
     ws = wb.create_sheet("Respuestas")

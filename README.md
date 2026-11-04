@@ -25,7 +25,7 @@ Hecha con [Streamlit](https://streamlit.io) y [Supabase](https://supabase.com) (
 **Docente** (ruta oculta `/admin`, con contraseña)
 
 - **Avance:** registrados, terminados y en curso, con el estado de cada alumno por test.
-- **Descargas:** Excel concentrado (con una hoja por test y la hoja «Respuestas» como respaldo de la base de
+- **Descargas:** Excel concentrado (4 hojas: Resumen, Alumnos, Resultados con todos los tests y «Respuestas» como respaldo de la base de
   datos), ZIP con el PDF de quienes terminaron, y PDF/Excel de un alumno.
 - **Código QR:** PNG de alta resolución con la URL pública.
 - Acceso: contraseña compartida; 5 intentos fallidos desde un mismo equipo (o 30 en total) bloquean 15 minutos, y la

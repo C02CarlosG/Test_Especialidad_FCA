@@ -103,6 +103,17 @@ def _lista(items: Sequence[str]) -> str:
     return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " y " + items[-1]
 
 
+def lectura_campo(c: Campo) -> tuple[str, bool]:
+    """(texto, coinciden) para un campo: «Coinciden» con 5 puntos o menos entre los dos tests; si no,
+    «Difieren N pts»."""
+    d = c.distancia
+    if d is None:
+        return "Sin datos", False
+    if d <= UMBRAL_EMPATE:
+        return "Coinciden", True
+    return f"Difieren {round(float(d) * 100)} pts", False
+
+
 def etiqueta_indice(indice: Fraction | None) -> str:
     if indice is None:
         return "Sin datos"
