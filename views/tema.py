@@ -21,7 +21,7 @@ UNIVERSIDAD = "Universidad Autónoma Benito Juárez de Oaxaca"
 # cualquier proxy. Pesan ~21 KB en total.
 RAIZ = Path(__file__).resolve().parent.parent
 LOGO_FCA = ("logo_fca.png", 165, 240, "Facultad de Contaduría y Administración, Calidad Académica")
-LOGO_UABJO = ("logo_uabjo.png", 204, 240, "Universidad Autónoma Benito Juárez de Oaxaca, 1955, Ciencia, Arte, Libertad")
+LOGO_GESTION = ("logo_gestion.png", 240, 240, "Gestión e Innovación de las Organizaciones, Cuerpo Académico FCA UABJO")
 
 
 @lru_cache(maxsize=1)
@@ -48,7 +48,7 @@ def _marca() -> str:
     """Un logo a cada lado y el nombre de la facultad al centro."""
     return (f'<div class="marca">{_logo("fca", LOGO_FCA)}'
             f'<span class="inst"><span class="kicker">{UNIVERSIDAD}</span><span class="nombre">{INSTITUCION}</span></span>'
-            f'{_logo("uabjo", LOGO_UABJO)}</div>')
+            f'{_logo("gestion", LOGO_GESTION)}</div>')
 
 
 def _corto(titulo: str) -> str:
