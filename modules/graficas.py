@@ -55,14 +55,15 @@ def grafica_ocean(informe: Informe) -> bytes | None:
 
 
 def grafica_campos(informe: Informe) -> bytes | None:
-    """Barras con los puntos del test de competencias por campo; el dominante en verde."""
+    """Barras con los puntos del test de competencias por campo; en verde, el campo (o campos) con más puntos."""
     campos = [c for c in informe.campos if c.puntos is not None]
     if not campos:
         return None
     plt = _mpl()
     maximo = max(c.maximo for c in campos)
     fig, ax = plt.subplots(figsize=(5.0, 4.0))
-    colores = [VERDE if c.codigo == informe.dominante.codigo else PIZARRA for c in campos]
+    mejor = max(c.puntos for c in campos)
+    colores = [VERDE if c.puntos == mejor else PIZARRA for c in campos]
     barras = ax.bar(range(len(campos)), [c.puntos for c in campos], color=colores, width=0.62)
     for b, c in zip(barras, campos):
         ax.text(b.get_x() + b.get_width() / 2, c.puntos + maximo * 0.015, f"{c.puntos} pts", ha="center", va="bottom",

@@ -78,7 +78,7 @@ def mostrar(alumno: Alumno, informe: Informe, fecha: datetime, cache: dict) -> N
             (c1, "Resultados Big Five (OCEAN)", grafica('g_ocean', grafica_ocean),
              "Tus factores más altos son fortalezas conductuales; los más bajos, áreas con espacio para crecer."),
             (c2, "Orientación por campo formativo", grafica('g_campos', grafica_campos),
-             "Un puntaje alto indica que realizas esas actividades con más autonomía. Es una guía orientativa, no determinista.")):
+             "En verde, el campo con más puntos en este test: un puntaje alto indica que realizas esas actividades con más autonomía. Es una guía orientativa, no determinista.")):
         with col:
             st.html(f'<h3 class="inf-h3">{escape(titulo)}</h3>')
             if png:

@@ -339,7 +339,7 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
                        pn("Orientación por campo formativo", "", ParagraphStyle("gt2", parent=cuerpo, alignment=1))],
                       [imagen(g1, 6.2 * cm) if g1 else "", imagen(g2, 6.8 * cm) if g2 else ""],
                       [p("Tus factores más altos son fortalezas conductuales; los más bajos, áreas con espacio para crecer.", chico),
-                       p("Un puntaje alto indica que realizas esas actividades con más autonomía. Es una guía orientativa, no determinista.", chico)]]
+                       p("En verde, el campo con más puntos en este test: un puntaje alto indica que realizas esas actividades con más autonomía. Es una guía orientativa, no determinista.", chico)]]
             tg = Table(celdas, colWidths=[ancho / 2, ancho / 2])
             tg.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (0, 1), (-1, 1), "CENTER"),
                                     ("TOPPADDING", (0, 0), (-1, -1), 4), ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#F6F8FC"))]))
