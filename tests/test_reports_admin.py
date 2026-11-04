@@ -40,7 +40,7 @@ def test_resumen_cuenta_alumnos_y_primeras_opciones(panel):
 def test_hoja_alumnos_incluye_a_todos_con_su_estado(panel):
     ws = _libro(panel)["Alumnos"]
     cab = [c.value for c in ws[1]]
-    assert cab[:8] == ["Matrícula", "Apellido paterno", "Apellido materno", "Nombre(s)", "Edad", "Tutor", "Registro", "Estado general"]
+    assert cab[:9] == ["Matrícula", "Apellido paterno", "Apellido materno", "Nombre(s)", "Semestre", "Edad", "Tutor", "Registro", "Estado general"]
     filas = {f[0].value: f for f in ws.iter_rows(min_row=2)}
     assert set(filas) == {"100001", "100002", "100003", "100004"}
     beto = [c.value for c in filas["100002"]]
@@ -51,7 +51,7 @@ def test_hoja_de_test_solo_trae_a_quien_tiene_resultado_con_porcentajes_numerico
     h1, h2 = _libro(panel)["Test 1"], _libro(panel)["Test 2"]
     assert {f[0].value for f in h1.iter_rows(min_row=2)} == {"100001", "100002"}
     assert {f[0].value for f in h2.iter_rows(min_row=2)} == {"100001"}
-    primera = [c for c in h2[2]][7]
+    primera = [c for c in h2[2]][8]
     assert isinstance(primera.value, (int, float)) and primera.number_format == "0.0%"
 
 

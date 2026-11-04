@@ -13,7 +13,8 @@ IP = "203.0.113.9"
 
 def datos(**kw):
     base = dict(apellido_paterno="Pérez", apellido_materno="López", nombres="Ana",
-                matricula="123456", edad=20, tutor="Mtro. Ruiz", acepto_privacidad=True)
+                matricula="123456", edad=20, tutor="Mtro. Ruiz", acepto_privacidad=True,
+                semestre=5)
     return DatosAcceso(**{**base, **kw})
 
 

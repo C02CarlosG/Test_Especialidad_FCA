@@ -104,7 +104,7 @@ def _tabla_avance(panel: PanelDatos) -> pd.DataFrame:
     filas = []
     for f in panel.filas:
         a = f.alumno
-        fila = {"Matrícula": a.matricula, "Nombre": a.nombre_completo, "Edad": a.edad, "Tutor": a.tutor,
+        fila = {"Matrícula": a.matricula, "Nombre": a.nombre_completo, "Semestre": a.semestre, "Edad": a.edad, "Tutor": a.tutor,
                 "Registro": a.creado_en.astimezone(ZONA).strftime("%d/%m/%Y %H:%M") if a.creado_en else "",
                 "Estado": ESTADOS.get(a.estado, a.estado)}
         for n, t in enumerate(panel.tests, start=1):

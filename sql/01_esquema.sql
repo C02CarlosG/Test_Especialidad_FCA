@@ -9,6 +9,7 @@ create table if not exists public.alumnos (
     matricula         text not null unique check (matricula ~ '^[0-9]{6}$'),
     edad              smallint not null check (edad between 18 and 99),
     tutor             text not null,   -- nombre del tutor / orientador
+    semestre          smallint check (semestre between 1 and 8),  -- nulo en alumnos registrados antes de pedirlo
     acepto_privacidad boolean not null default false,
     acepto_en         timestamptz,
     estado            text not null default 'en_curso'

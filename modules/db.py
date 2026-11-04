@@ -40,14 +40,14 @@ def _alumno(fila: dict[str, Any]) -> Alumno:
     return Alumno(id=fila["id"], apellido_paterno=fila["apellido_paterno"],
                   apellido_materno=fila["apellido_materno"], nombres=fila["nombres"],
                   matricula=fila["matricula"], edad=fila["edad"], tutor=fila["tutor"],
-                  estado=fila["estado"], creado_en=_fecha(fila.get("creado_en")))
+                  estado=fila["estado"], creado_en=_fecha(fila.get("creado_en")), semestre=fila.get("semestre"))
 
 
 def _fecha(valor: str | None) -> datetime | None:
     return datetime.fromisoformat(valor) if valor else None
 
 
-_COLS_ALUMNO = "id,apellido_paterno,apellido_materno,nombres,matricula,edad,tutor,estado"
+_COLS_ALUMNO = "id,apellido_paterno,apellido_materno,nombres,matricula,edad,tutor,semestre,estado"
 
 
 class SupabaseRepo:
@@ -79,11 +79,11 @@ class SupabaseRepo:
 
     def crear_alumno(self, apellido_paterno: str, apellido_materno: str, nombres: str,
                      matricula: str, edad: int, tutor: str,
-                     acepto_en: datetime) -> Alumno:
+                     acepto_en: datetime, semestre: int | None = None) -> Alumno:
         try:
             r = self._c.table("alumnos").insert({
                 "apellido_paterno": apellido_paterno, "apellido_materno": apellido_materno,
-                "nombres": nombres, "matricula": matricula, "edad": edad, "tutor": tutor,
+                "nombres": nombres, "matricula": matricula, "edad": edad, "tutor": tutor, "semestre": semestre,
                 "acepto_privacidad": True,
                 "acepto_en": acepto_en.isoformat(),
             }).execute()

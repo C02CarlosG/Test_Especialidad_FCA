@@ -60,8 +60,8 @@ def excel_concentrado(panel: PanelDatos, fecha: datetime) -> bytes:
             c.number_format = "0.0%"
 
     datos_alumno = lambda a: [_seguro(a.matricula), _seguro(a.apellido_paterno), _seguro(a.apellido_materno),  # noqa: E731
-                              _seguro(a.nombres), a.edad, _seguro(a.tutor), _fecha(a.creado_en)]
-    cols_alumno = ["Matrícula", "Apellido paterno", "Apellido materno", "Nombre(s)", "Edad", "Tutor", "Registro"]
+                              _seguro(a.nombres), a.semestre, a.edad, _seguro(a.tutor), _fecha(a.creado_en)]
+    cols_alumno = ["Matrícula", "Apellido paterno", "Apellido materno", "Nombre(s)", "Semestre", "Edad", "Tutor", "Registro"]
 
     # --- Resumen ---
     ws = wb.active

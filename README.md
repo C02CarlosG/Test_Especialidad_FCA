@@ -14,7 +14,7 @@ Hecha con [Streamlit](https://streamlit.io) y [Supabase](https://supabase.com) (
 
 **Alumno** (en la raíz de la URL, pensado para el celular)
 
-1. Se registra: apellidos, nombre(s), matrícula (6 dígitos), edad (mínimo 18), tutor, y acepta el aviso de privacidad.
+1. Se registra: apellidos, nombre(s), matrícula (6 dígitos), semestre (del 1.º al 8.º), edad (mínimo 18), tutor, y acepta el aviso de privacidad.
 2. Contesta los tests **en orden**, en bloques de 10 preguntas, con barra de avance. **Todas las preguntas son
    obligatorias**; cada bloque se guarda al continuar.
 3. Si recarga la página, vuelve a escribir su matrícula y nombre y **continúa donde se quedó**.
@@ -54,6 +54,9 @@ pip install -r requirements.txt
 [`sql/01_esquema.sql`](sql/01_esquema.sql) y luego el de [`sql/02_rls.sql`](sql/02_rls.sql). El segundo activa la
 seguridad por filas sin políticas públicas: nadie puede leer ni escribir con la clave pública; la app usa la
 `service_role key` desde el servidor.
+
+> **Si la base ya existía** (instalada antes de pedir el semestre), ejecuta también [`sql/03_semestre.sql`](sql/03_semestre.sql)
+> en el SQL Editor **antes de desplegar**: agrega la columna `semestre`. Sin ella, el registro falla. Es seguro repetirlo.
 
 **2. Secretos.** Copia la plantilla y llena los valores (el archivo real está en `.gitignore`):
 
@@ -150,7 +153,7 @@ casos recalculados en LibreOffice (`scripts/generar_golden_scoring.py`, `tests/g
 
 ## Privacidad y datos personales
 
-- **Qué se guarda:** apellidos, nombre(s), matrícula, edad, tutor, fecha y hora de aceptación del aviso, y las
+- **Qué se guarda:** apellidos, nombre(s), matrícula, semestre, edad, tutor, fecha y hora de aceptación del aviso, y las
   respuestas a los tests. **No se pide correo.** Para limitar intentos fallidos se guarda un *hash* de la IP del
   equipo (no la IP), que es seudonimización, no anonimato.
 - **Quién accede:** solo el docente con la contraseña del panel. Las tablas tienen seguridad por filas activa y

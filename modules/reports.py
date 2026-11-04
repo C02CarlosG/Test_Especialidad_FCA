@@ -369,7 +369,8 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
 
     historia = [_encabezado_pdf(p, h1, h3, ancho),
                 tabla([["Alumno", alumno.nombre_completo], ["Matrícula", alumno.matricula],
-                       ["Edad", str(alumno.edad)], ["Tutor / orientador", alumno.tutor],
+                       ["Semestre", str(alumno.semestre) if alumno.semestre else "—"], ["Edad", str(alumno.edad)],
+                       ["Tutor / orientador", alumno.tutor],
                        ["Fecha", fecha.strftime("%d/%m/%Y")]], [4 * cm, ancho - 4 * cm], cabecera=False),
                 Spacer(1, 6)]
     if informe is not None:
@@ -536,7 +537,7 @@ def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Se
     ws["A1"] = "Reporte de Evaluación Integral" if informe else "Evaluación Diagnóstica FCA - Reporte de resultados"
     ws["A1"].font = Font(bold=True, size=14, color="1B3A8C" if informe else None)
     datos = [("Alumno", _seguro(alumno.nombre_completo)), ("Matrícula", alumno.matricula),
-             ("Edad", alumno.edad), ("Tutor / orientador", _seguro(alumno.tutor)),
+             ("Semestre", alumno.semestre), ("Edad", alumno.edad), ("Tutor / orientador", _seguro(alumno.tutor)),
              ("Fecha", fecha.strftime("%d/%m/%Y"))]
     for i, (k, v) in enumerate(datos, start=3):
         ws.cell(i, 1, k).font = negrita

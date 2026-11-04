@@ -31,13 +31,14 @@ def _nuevo():
     return AppTest.from_function(_app, default_timeout=30).run()
 
 
-def _llenar(at, matricula="123456", edad=20, acepto=True, nombres="Ana María"):
+def _llenar(at, matricula="123456", edad=20, acepto=True, nombres="Ana María", semestre=5):
     at.text_input[0].input("Pérez")
     at.text_input[1].input("López")
     at.text_input[2].input(nombres)
     at.text_input[3].input(matricula)
+    at.selectbox[0].set_value(semestre)
     at.number_input[0].set_value(edad)
-    at.text_input[5].input("Mtro. Ruiz")  # text_input[4] es la fecha (deshabilitada)
+    at.text_input[4].input("Mtro. Ruiz")  # text_input[5] es la fecha (deshabilitada)
     if acepto:
         at.checkbox[0].check()
     at.button[0].click().run()
@@ -67,7 +68,7 @@ def test_no_hay_campo_de_codigo_de_grupo():
 
 def test_la_fecha_de_aplicacion_esta_deshabilitada_y_es_de_hoy():
     from views.alumno import ZONA
-    fecha = _nuevo().text_input[4]
+    fecha = _nuevo().text_input[5]
     assert fecha.disabled and fecha.value == datetime.now(ZONA).strftime("%d/%m/%Y")
 
 
@@ -177,3 +178,29 @@ def test_los_botones_de_descarga_no_disparan_rerun():
     _contestar_todo(at, "SE").button[0].click().run()
     botones = at.get("download_button")
     assert len(botones) == 2 and all(b.proto.ignore_rerun for b in botones)
+
+
+def test_el_semestre_es_un_desplegable_del_primero_al_octavo():
+    at = _nuevo()
+    caja = at.selectbox[0]
+    assert caja.label == "Semestre *" and caja.value is None
+    assert caja.options == ["Primer semestre", "Segundo semestre", "Tercer semestre", "Cuarto semestre",
+                            "Quinto semestre", "Sexto semestre", "Séptimo semestre", "Octavo semestre"]
+
+
+def test_sin_semestre_no_registra():
+    at = _nuevo()
+    at.text_input[0].input("Pérez")
+    at.text_input[1].input("López")
+    at.text_input[2].input("Ana")
+    at.text_input[3].input("123456")
+    at.number_input[0].set_value(20)
+    at.text_input[4].input("Mtro. Ruiz")
+    at.checkbox[0].check()
+    at.button[0].click().run()
+    assert "Elige tu semestre" in at.error[0].value and not at.radio
+
+
+def test_el_semestre_elegido_se_guarda_con_el_alumno():
+    at = _llenar(_nuevo(), semestre=8)
+    assert at.session_state["alumno"].semestre == 8

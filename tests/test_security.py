@@ -4,15 +4,15 @@ from modules import security as sec
 
 
 BASE = dict(apellido_paterno="Pérez", apellido_materno="López", nombres="Ana María",
-            matricula="123456", edad=20, tutor="Mtro. Juan Ruiz")
+            matricula="123456", edad=20, tutor="Mtro. Juan Ruiz", semestre=5)
 
 
 def test_datos_validos_se_normalizan():
     v, e = sec.validar_datos("  Pérez ", "López  ", " Ana   María ", " 123456 ", 20,
-                             "  Mtro.  Juan Ruiz ")
+                             "  Mtro.  Juan Ruiz ", 5)
     assert e == {}
     assert v == {"apellido_paterno": "Pérez", "apellido_materno": "López", "nombres": "Ana María",
-                 "matricula": "123456", "edad": 20, "tutor": "Mtro. Juan Ruiz"}
+                 "matricula": "123456", "edad": 20, "tutor": "Mtro. Juan Ruiz", "semestre": 5}
 
 
 @pytest.mark.parametrize("campo,valor", [
@@ -21,6 +21,7 @@ def test_datos_validos_se_normalizan():
     ("matricula", ""), ("matricula", "12345"), ("matricula", "1234567"), ("matricula", "12345a"),
     ("matricula", "12 456"), ("matricula", "12-456"), ("matricula", "١٢٣٤٥٦"),
     ("edad", None), ("edad", 17), ("edad", 0), ("edad", 100),
+    ("semestre", None), ("semestre", 0), ("semestre", 9),
     ("tutor", ""), ("tutor", "..."), ("tutor", "=HYPERLINK(1)"), ("nombres", "+52 Ana"), ("apellido_paterno", "@x"),
 ])
 def test_campos_invalidos(campo, valor):
@@ -40,12 +41,12 @@ def test_clave_cliente_no_guarda_la_ip():
 
 
 def test_los_caracteres_de_control_se_eliminan_antes_de_validar():
-    v, e = sec.validar_datos("Pérez", "López", "Ana\x01 Mar\x1bía\x08", "123456", 20, "Mtro.\x07 Ruiz")
+    v, e = sec.validar_datos("Pérez", "López", "Ana\x01 Mar\x1bía\x08", "123456", 20, "Mtro.\x07 Ruiz", 5)
     assert e == {} and v["nombres"] == "Ana María" and v["tutor"] == "Mtro. Ruiz"
 
 
 def test_un_nombre_solo_de_control_es_invalido():
-    _, e = sec.validar_datos("\x01\x02", "López", "Ana", "123456", 20, "Tutor X")
+    _, e = sec.validar_datos("\x01\x02", "López", "Ana", "123456", 20, "Tutor X", 5)
     assert "apellido_paterno" in e
 
 
@@ -62,5 +63,5 @@ def test_normalizar_texto_quita_caracteres_no_validos(sucio, limpio):
 
 
 def test_un_nombre_con_no_caracteres_se_guarda_limpio():
-    v, e = sec.validar_datos("Pérez\ufffe", "López", "Ana\uffff", "123456", 20, "Mtro. \ufffeRuiz")
+    v, e = sec.validar_datos("Pérez\ufffe", "López", "Ana\uffff", "123456", 20, "Mtro. \ufffeRuiz", 5)
     assert e == {} and (v["apellido_paterno"], v["nombres"], v["tutor"]) == ("Pérez", "Ana", "Mtro. Ruiz")

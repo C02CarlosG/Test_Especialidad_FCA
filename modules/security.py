@@ -17,6 +17,8 @@ _RE_MATRICULA = re.compile(r"[0-9]{6}")  # exactamente 6 dígitos (solo ASCII)
 
 EDAD_MINIMA = 18
 EDAD_MAXIMA = 99
+SEMESTRE_MINIMO = 1
+SEMESTRE_MAXIMO = 8
 
 
 def limpiar_caracteres(valor: str) -> str:
@@ -41,7 +43,7 @@ def _nombre_ok(valor: str) -> bool:
 
 
 def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
-                  matricula: str, edad: int | None, tutor: str
+                  matricula: str, edad: int | None, tutor: str, semestre: int | None = None
                   ) -> tuple[dict[str, str | int], dict[str, str]]:
     """Devuelve (valores normalizados, errores por campo). Sin errores = dict vacío."""
     v: dict[str, str | int] = {
@@ -51,6 +53,7 @@ def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
         "matricula": normalizar_matricula(matricula),
         "tutor": normalizar_texto(tutor),
         "edad": edad if edad is not None else 0,
+        "semestre": semestre if semestre is not None else 0,
     }
     errores: dict[str, str] = {}
     for campo, etiqueta in (("apellido_paterno", "el apellido paterno"),
@@ -66,6 +69,8 @@ def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
         errores["edad"] = f"Este test es solo para mayores de {EDAD_MINIMA} años."
     elif edad > EDAD_MAXIMA:
         errores["edad"] = "Revisa tu edad."
+    if semestre is None or not SEMESTRE_MINIMO <= semestre <= SEMESTRE_MAXIMO:
+        errores["semestre"] = "Elige tu semestre."
     if not _nombre_ok(str(v["tutor"])):
         errores["tutor"] = "Escribe el nombre de tu tutor u orientador."
     return v, errores

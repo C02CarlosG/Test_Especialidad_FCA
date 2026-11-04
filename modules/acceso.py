@@ -27,6 +27,7 @@ class Alumno:
     tutor: str
     estado: str  # en_curso | terminado
     creado_en: datetime | None = None  # solo lo llenan las consultas del panel del docente
+    semestre: int | None = None  # None en los alumnos registrados antes de pedirlo
 
     @property
     def nombre_completo(self) -> str:
@@ -42,6 +43,7 @@ class DatosAcceso:
     edad: int | None
     tutor: str
     acepto_privacidad: bool
+    semestre: int | None = None
 
 
 @dataclass(frozen=True)
@@ -59,7 +61,8 @@ class Repositorio(Protocol):
     def registrar_intento(self, tipo: str, clave: str) -> None: ...
     def obtener_alumno_por_matricula(self, matricula: str) -> Alumno | None: ...
     def crear_alumno(self, apellido_paterno: str, apellido_materno: str, nombres: str,
-                     matricula: str, edad: int, tutor: str, acepto_en: datetime) -> Alumno: ...
+                     matricula: str, edad: int, tutor: str, acepto_en: datetime,
+                     semestre: int | None = None) -> Alumno: ...
 
 
 class AccesoError(Exception):
@@ -125,7 +128,7 @@ def iniciar_acceso(repo: Repositorio, datos: DatosAcceso, cliente_ip: str,
     if not datos.acepto_privacidad:
         raise AccesoError("Debes aceptar el aviso de privacidad para continuar.")
     v, errores = sec.validar_datos(datos.apellido_paterno, datos.apellido_materno, datos.nombres,
-                                   datos.matricula, datos.edad, datos.tutor)
+                                   datos.matricula, datos.edad, datos.tutor, datos.semestre)
     if errores:
         raise DatosInvalidos(errores)
 
@@ -147,7 +150,7 @@ def iniciar_acceso(repo: Repositorio, datos: DatosAcceso, cliente_ip: str,
     try:
         alumno = repo.crear_alumno(
             str(v["apellido_paterno"]), str(v["apellido_materno"]), str(v["nombres"]),
-            str(v["matricula"]), int(v["edad"]), str(v["tutor"]), ahora)
+            str(v["matricula"]), int(v["edad"]), str(v["tutor"]), ahora, semestre=int(v["semestre"]))
     except MatriculaDuplicada:  # dos envíos simultáneos con la misma matrícula
         raise MatriculaNoDisponible() from None
     return ResultadoAcceso(alumno, reanudado=False)

@@ -36,11 +36,11 @@ class FakeRepo:
         return self.alumnos.get(matricula)
 
     def crear_alumno(self, apellido_paterno, apellido_materno, nombres, matricula, edad, tutor,
-                     acepto_en):
+                     acepto_en, semestre=None):
         if self.carrera or matricula in self.alumnos:
             raise MatriculaDuplicada()
         a = Alumno(f"a{next(self._ids)}", apellido_paterno, apellido_materno, nombres,
-                   matricula, edad, tutor, "en_curso")
+                   matricula, edad, tutor, "en_curso", semestre=semestre)
         self.alumnos[matricula] = a
         return a
 
