@@ -1,0 +1,26 @@
+# Identidad visual de la app (azul marino y oro). No contiene secretos; sí se sube al repositorio.
+[theme]
+base = "light"
+primaryColor = "#0F1E4A"
+backgroundColor = "#EEF2F8"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1E2A4A"
+borderColor = "#D6DDEB"
+showWidgetBorder = true
+baseRadius = "0.75rem"
+buttonRadius = "0.75rem"
+linkColor = "#0F1E4A"
+# Tipografías autoalojadas en ./static/fonts (se declaran en views/tema.css); sin servidores de terceros.
+font = "'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+headingFont = "'Fraunces', 'Iowan Old Style', Palatino, Georgia, serif"
+headingFontSizes = ["2rem", "1.5rem", "1.2rem", "1.05rem", "1rem", "0.9rem"]
+headingFontWeights = [650, 650, 650, 600, 600, 600]
+
+[client]
+toolbarMode = "minimal"   # sin menú ni botón Deploy para los alumnos
+
+[browser]
+gatherUsageStats = false
+
+[server]
+enableStaticServing = true   # sirve ./static (logos) con caché del navegador, sin reenviarlos en cada recarga
