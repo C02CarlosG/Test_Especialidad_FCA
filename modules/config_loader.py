@@ -5,7 +5,7 @@ alfabético del nombre de archivo (test_1_*.xlsx, test_2_*.xlsx, ...). El id del
 test es el nombre del archivo sin extensión.
 
 Hojas requeridas en cada archivo:
-  - especialidades: codigo, nombre, descripcion, perfil_profesional  (columna opcional: requisito)
+  - especialidades: codigo, nombre, descripcion, perfil_profesional  (columnas opcionales: requisito, recomendacion)
   - preguntas:      id, bloque, texto, especialidad_codigo, invertida (SI/NO)
   - escala:         valor, etiqueta   (valor numérico, o la fila especial 'SE' = sin experiencia)
 Hojas opcionales:
@@ -53,6 +53,7 @@ class Especialidad:
     descripcion: str
     perfil_profesional: str
     requisito: str = ""  # columna opcional: requisito de la especialidad (p. ej. nivel de inglés)
+    recomendacion: str = ""  # columna opcional: texto de recomendación que se muestra en la hoja de resultados
 
 
 @dataclass(frozen=True)
@@ -199,7 +200,8 @@ def load_test_config(ruta: str | Path) -> TestConfig:
     for i, fila in hojas["especialidades"].iterrows():
         n = int(i) + 2  # número de fila en Excel (encabezado = 1)
         esp = Especialidad(*(_texto(fila[c]) for c in HOJAS_REQUERIDAS["especialidades"]),
-                           requisito=_texto(fila["requisito"]) if "requisito" in fila.index else "")
+                           requisito=_texto(fila["requisito"]) if "requisito" in fila.index else "",
+                           recomendacion=_texto(fila["recomendacion"]) if "recomendacion" in fila.index else "")
         if not esp.codigo or not esp.nombre:
             errores.append(f"especialidades fila {n}: 'codigo' y 'nombre' son obligatorios.")
             continue

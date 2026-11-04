@@ -72,6 +72,9 @@ def mostrar(alumno: Alumno, informe: Informe, fecha: datetime, cache: dict) -> N
                      f'<div>{" ".join(escape(m) for m in informe.motivos_confianza)}</div></div>')
     for n in informe.notas:
         st.html(f'<div class="inf nota"><b>Nota:</b> {escape(n)}</div>')
+    for campo, rol, texto in informe.recomendaciones:
+        st.html(f'<div class="inf reco"><h3>Recomendación para {escape(campo)}</h3>'
+                f'<p class="rol">{escape(campo)} es {escape(rol)}.</p><p>{escape(texto)}</p></div>')
 
     c1, c2 = st.columns(2)
     for col, titulo, png, pie in (

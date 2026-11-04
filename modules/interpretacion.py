@@ -59,6 +59,7 @@ class Campo:
     descripcion: str  # texto de la afinidad (test de rasgos)
     descripcion_competencias: str
     requisito: str
+    recomendacion: str
     sin_experiencia: int
     requiere_exploracion: bool
 
@@ -90,6 +91,7 @@ class Informe:
     desarrollo: tuple[str, ...]
     lectura: str  # qué dicen los dos tests juntos
     notas: tuple[str, ...]  # requisitos y avisos para el alumno
+    recomendaciones: tuple[tuple[str, str, str], ...]  # (campo, rol del campo para el alumno, texto)
     titulos: tuple[str, str]  # (test de rasgos, test de competencias)
 
 
@@ -147,7 +149,7 @@ def construir(tests: Sequence[TestConfig], resultados: Sequence[ResultadoTest]) 
         campos.append(Campo(
             d.codigo, d.nombre, a.porcentaje, c.porcentaje, None if c.sin_datos else c.obtenido,
             None if c.sin_datos else c.maximo, c.nivel, prom, d.componentes, d.descripcion,
-            esp_c.descripcion if esp_c else "", esp_c.requisito if esp_c else "", c.sin_experiencia,
+            esp_c.descripcion if esp_c else "", esp_c.requisito if esp_c else "", esp_c.recomendacion if esp_c else "", c.sin_experiencia,
             c.requiere_exploracion))
     ranking = tuple(sorted((c for c in campos if c.promedio is not None), key=lambda c: c.promedio, reverse=True))
     if not ranking:
@@ -218,9 +220,13 @@ def construir(tests: Sequence[TestConfig], resultados: Sequence[ResultadoTest]) 
         lectura += (f" La mayor distancia entre tests está en {mayor.nombre} ({_p(mayor.distancia)}): ahí tu forma de ser "
                     "y tus competencias actuales cuentan historias distintas.")
 
-    notas = []
-    for c in (dom, comple):
-        if c is not None and c.requisito and c.nombre not in " ".join(notas):
+    notas, recomendaciones = [], []
+    for c, rol in ((dom, "tu campo dominante"), (comple, "tu campo complementario"), (tercero, "un campo para explorar")):
+        if c is None:
+            continue
+        if c.recomendacion:
+            recomendaciones.append((c.nombre, rol, c.recomendacion))
+        elif c.requisito and c is not tercero:
             notas.append(f"Para {c.nombre} se requiere {c.requisito}; si es una opción para ti, conviene fortalecerlo.")
     for e in r_c.especialidades:
         if e.sin_datos:
@@ -230,7 +236,7 @@ def construir(tests: Sequence[TestConfig], resultados: Sequence[ResultadoTest]) 
                          "conviene explorar esta área antes de descartarla.")
     return Informe(rasgos, tuple(campos), ranking, dom, comple, tercero, requeridos, indice, etiqueta_indice(indice),
                    margen, empate, coinciden, confianza, tuple(motivos), analisis, tuple(fortalezas),
-                   tuple(desarrollo), lectura.strip(), tuple(notas), (t_r.titulo, t_c.titulo))
+                   tuple(desarrollo), lectura.strip(), tuple(notas), tuple(recomendaciones), (t_r.titulo, t_c.titulo))
 
 
 def _diferencia_puntos(a: Campo, b: Campo) -> str:

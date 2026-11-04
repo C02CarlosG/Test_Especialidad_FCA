@@ -31,10 +31,12 @@ DESCRIPCION_RASGOS = {
     "ESTABILIDAD": "Manejo de la presión. Refleja tu resiliencia y tu objetividad cuando hay tensión.",
 }
 REQUISITOS = {"NI": "un dominio mínimo de inglés de nivel B1 o equivalente"}  # columna opcional «requisito» del test 2
+RECOMENDACIONES = {"NI": (
+    'El inglés es la lengua de trabajo del comercio internacional: la negociación con clientes y proveedores, la documentación de comercio exterior y la mayor parte de la información del sector están en este idioma. Se recomienda alcanzar al menos el nivel B1 (o equivalente) antes de cursar la especialidad. Si no conoces tu nivel, solicita una evaluación diagnóstica en un centro de idiomas; si estás por debajo de B1, considera cursar inglés en paralelo a tus materias y practicar con lecturas, videos y vocabulario de negocios.')}  # columna opcional «recomendacion» del test 2
 
 
 def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escala,
-             niveles, afinidades=None, requisitos=None) -> None:
+             niveles, afinidades=None, requisitos=None, recomendaciones=None) -> None:
     hojas = {
         "info": pd.DataFrame([("titulo", titulo), ("instrucciones", instrucciones)],
                              columns=["clave", "valor"]),
@@ -48,6 +50,8 @@ def escribir(ruta: Path, titulo, instrucciones, especialidades, preguntas, escal
     if afinidades:
         hojas["afinidad"] = pd.DataFrame(
             afinidades, columns=["codigo", "nombre", "componentes", "descripcion"])
+    if recomendaciones:
+        hojas["especialidades"]["recomendacion"] = hojas["especialidades"]["codigo"].map(recomendaciones).fillna("")
     if requisitos:
         hojas["especialidades"]["requisito"] = hojas["especialidades"]["codigo"].map(requisitos).fillna("")
     with pd.ExcelWriter(ruta, engine="openpyxl") as w:
@@ -110,7 +114,7 @@ def test_2() -> None:
     instrucciones = ws["A10"].value.split("\n")[0].strip()
     escribir(DESTINO / "2_test_orientacion_especialidades.xlsx",
              "Test 2: Administration Specialties", instrucciones, esp, preguntas, escala,
-             niveles, requisitos=REQUISITOS)
+             niveles, requisitos=REQUISITOS, recomendaciones=RECOMENDACIONES)
 
 
 if __name__ == "__main__":

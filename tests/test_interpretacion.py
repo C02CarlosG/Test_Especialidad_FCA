@@ -156,3 +156,17 @@ def test_el_nombre_del_alumno_se_escapa_en_la_pantalla():
     from html import escape
     raro = replace(alumno(), nombres="<script>alert(1)</script>")
     assert "<script>" not in escape(raro.nombre_completo)
+
+
+def test_la_recomendacion_del_ingles_sale_solo_si_negocios_internacionales_esta_entre_las_tres_primeras():
+    ni = next(e for e in TEST2.especialidades if e.codigo == "NI")
+    assert "inglés" in ni.recomendacion and "B1" in ni.recomendacion
+    for i2 in range(len(GOLDEN["test2"])):
+        inf = construir([TEST1, TEST2], _resultados(i2=i2))
+        primeras = [c.codigo for c in (inf.dominante, inf.complementario, inf.tercero) if c]
+        con_reco = [r[0] for r in inf.recomendaciones]
+        assert ("Negocios Internacionales" in con_reco) == ("NI" in primeras)
+        for campo, rol, texto in inf.recomendaciones:
+            assert rol in ("tu campo dominante", "tu campo complementario", "un campo para explorar") and "B1" in texto
+        if "NI" in primeras[:2]:
+            assert not any("Negocios Internacionales se requiere" in n for n in inf.notas)  # la recomendación sustituye a la nota

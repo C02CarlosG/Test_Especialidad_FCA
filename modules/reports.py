@@ -335,6 +335,10 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         out += [res, Spacer(1, 4), pn(f"Confianza {inf.confianza}.", " ".join(inf.motivos_confianza), chico)]
         for n in inf.notas:
             out += [Spacer(1, 4), caja(pn("Nota:", n, ParagraphStyle("nt", parent=chico, textColor=colors.HexColor("#14307A"))), "#EAF2FF", "#BFD6F5")]
+        for campo, rol, texto in inf.recomendaciones:
+            est = ParagraphStyle("rc", parent=chico, textColor=colors.HexColor("#1E2A4A"))
+            out += [Spacer(1, 4), caja([pn(f"Recomendación para {campo}", "", ParagraphStyle("rt", parent=chico, textColor=colors.HexColor("#17683F"), fontSize=9.5)),
+                                        p(f"{campo} es {rol}.", est), p(texto, est)], "#E3F3EA", "#B9DEC9", izquierda="#17683F")]
         g1, g2 = grafica_ocean(inf), grafica_campos(inf)
         if g1 or g2:
             mitad = ancho / 2 - 6
@@ -577,6 +581,9 @@ def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Se
         for n in informe.notas:
             fila += 1
             parrafo(ws, fila, "Nota: " + n, fondo="EAF2FF", color="14307A")
+        for campo, rol, texto in informe.recomendaciones:
+            fila += 1
+            parrafo(ws, fila, f"Recomendación para {campo} ({campo} es {rol}): {texto}", fondo="E3F3EA", color="17683F")
         fila += 2
         barra(ws, fila, "Dónde coinciden tus dos tests (el promedio es orientativo)")
         fila += 1

@@ -70,6 +70,7 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 | `[supabase]` | `service_role_key` | Clave de servidor (Settings → API). **Nunca** en el navegador ni en el repositorio |
 | `[admin]` | `password` | Contraseña del panel `/admin`: mínimo 12 caracteres, larga y única |
 | `[app]` | `public_url` | URL pública de la app (la que lleva el QR) |
+| `[app]` | `carrera` | `administracion` (por defecto) o `contaduria`: elige los tests de `config/tests` o `config/contaduria/tests` y el subtítulo |
 | `[app]` | `MOSTRAR_RESULTADO_AL_ALUMNO` | `true` (por defecto): el alumno ve y descarga sus resultados; `false`: solo el docente |
 
 **3. Correr la app y las pruebas.**
@@ -81,9 +82,26 @@ python3 -m pytest -q        # unas 500 pruebas; no necesitan Supabase
 
 Algunas pruebas usan herramientas opcionales (`pdftotext`, `pdfimages`, `zbarimg`) y se omiten si no están.
 
+## Dos carreras, un mismo código
+
+El código es el mismo para **Administración** y **Contaduría Pública**; cambian los tests y la base de datos:
+
+| | Administración | Contaduría Pública |
+|---|---|---|
+| `[app] carrera` | `administracion` (o vacío) | `contaduria` |
+| Tests | [`config/tests/`](config/tests) | [`config/contaduria/tests/`](config/contaduria/tests) |
+| Campos | Mercadotecnia, Capital Humano, Adm. Financiera, Negocios Int., Emprendimiento | Contabilidades Esp., Auditorías Esp., Derecho Fiscal, Adm. Financiera |
+| Base de datos | su proyecto de Supabase | **otro proyecto de Supabase**, con los mismos scripts de `sql/` |
+
+Para publicar Contaduría: crea un proyecto nuevo en Supabase y ejecuta `sql/01_esquema.sql` y `sql/02_rls.sql` (el
+`03` ya viene incluido en el `01`); crea una segunda app en Streamlit Cloud con el mismo repositorio y rama, y en sus
+Secrets pon las claves del proyecto nuevo, otra contraseña de `/admin`, su `public_url` y `carrera = "contaduria"`.
+Las calculadoras de Contaduría están en [`docs/referencia_contaduria/`](docs/referencia_contaduria) y
+[`scripts/convertir_tests_contaduria.py`](scripts/convertir_tests_contaduria.py) las convierte.
+
 ## Los tests (archivos Excel)
 
-Cada test es un `.xlsx` en [`config/tests/`](config/tests). El alumno los contesta en el **orden alfabético** del
+Cada test es un `.xlsx` en la carpeta de la carrera (p. ej. [`config/tests/`](config/tests)). El alumno los contesta en el **orden alfabético** del
 nombre de archivo, que además es el id del test (minúsculas, números, `_` o `-`, hasta 40 caracteres).
 
 | Hoja | Columnas | |
@@ -96,7 +114,9 @@ nombre de archivo, que además es el id del test (minúsculas, números, `_` o `
 | `afinidad` | `codigo`, `nombre`, `componentes` (p. ej. `APERTURA+EXTRAVERSION`), `descripcion` | Opcional |
 
 - En `especialidades`, la columna opcional `requisito` (p. ej. «un dominio mínimo de inglés de nivel B1») sale como
-  nota en la hoja de resultados cuando esa especialidad es la 1.ª o la 2.ª opción. En el test de rasgos (Big Five),
+  nota en la hoja de resultados cuando esa especialidad es la 1.ª o la 2.ª opción. La columna opcional `recomendacion` es
+  un texto que se muestra en un recuadro cuando la especialidad está entre las tres primeras (hoy: el inglés en Negocios
+  Internacionales); si existe, sustituye a la nota de `requisito`. En el test de rasgos (Big Five),
   `descripcion` es la frase de «Cómo se ven tus rasgos».
 - Si falta una hoja, hay IDs repetidos o una pregunta apunta a una especialidad inexistente, la app **lo dice con
   todos los errores juntos** (el docente los ve en los registros; el alumno ve un aviso genérico).
