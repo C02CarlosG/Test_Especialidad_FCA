@@ -286,9 +286,9 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
             return Image(str(ruta), width=alto * w / h, height=alto, mask="auto")
 
         centro = [Paragraph("UNIVERSIDAD AUTÓNOMA BENITO JUÁREZ DE OAXACA", ParagraphStyle("k", parent=h3, alignment=1, fontSize=6.6, spaceAfter=3)),
-                  Paragraph("Reporte de Evaluación Integral" if informe else "Evaluación Diagnóstica FCA",
+                  Paragraph("Reporte de Evaluación Integral",
                             ParagraphStyle("h1c", parent=h1, alignment=1)),
-                  Paragraph(SUBTITULO_INFORME if informe else "Reporte de resultados",
+                  Paragraph(SUBTITULO_INFORME,
                             ParagraphStyle("h3c", parent=h3, alignment=1, fontSize=8.5))]
         t = Table([[logo(LOGOS[0]), centro, logo(LOGOS[1])]], colWidths=[2.9 * cm, ancho - 5.8 * cm, 2.9 * cm])
         t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (0, 0), "LEFT"),
@@ -541,7 +541,7 @@ def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Se
             c.fill = PatternFill("solid", fgColor=fondo)
         hoja.row_dimensions[fila].height = max(18, 15 * (len(texto) // ancho_car + 1))
 
-    ws["A1"] = "Reporte de Evaluación Integral" if informe else "Evaluación Diagnóstica FCA - Reporte de resultados"
+    ws["A1"] = "Reporte de Evaluación Integral"
     ws["A1"].font = Font(bold=True, size=14, color="1B3A8C" if informe else None)
     datos = [("Alumno", _seguro(alumno.nombre_completo)), ("Matrícula", alumno.matricula),
              ("Semestre", alumno.semestre), ("Edad", alumno.edad), ("Tutor / orientador", _seguro(alumno.tutor)),
