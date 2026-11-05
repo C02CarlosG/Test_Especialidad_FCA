@@ -113,7 +113,7 @@ def test_2() -> None:
                ("categoria", 0, "BAJO (Baja Afinidad)")]
     instrucciones = ws["A10"].value.split("\n")[0].strip()
     escribir(DESTINO / "2_test_orientacion_especialidades.xlsx",
-             "Test 2: Administration Specialties", instrucciones, esp, preguntas, escala,
+             "Test 2: Especialidades Lic. en Administración", instrucciones, esp, preguntas, escala,
              niveles, requisitos=REQUISITOS, recomendaciones=RECOMENDACIONES)
 
 

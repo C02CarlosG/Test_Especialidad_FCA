@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape
 
 from modules.acceso import Alumno
 from modules.config_loader import TestConfig
-from modules.interpretacion import (ALCANCE, SUBTITULO_CIERRE, TITULO_CIERRE, Informe, construir as construir_informe)
+from modules.interpretacion import (ALCANCE, SUBTITULO_CIERRE, SUBTITULO_INFORME, TITULO_CIERRE, Informe, construir as construir_informe)
 from modules.scoring import ResultadoTest
 
 LOGOS = (Path(__file__).resolve().parent.parent / "static" / "logo_fca.png",
@@ -288,7 +288,7 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
         centro = [Paragraph("UNIVERSIDAD AUTÓNOMA BENITO JUÁREZ DE OAXACA", ParagraphStyle("k", parent=h3, alignment=1, fontSize=6.6, spaceAfter=3)),
                   Paragraph("Reporte de Evaluación Integral" if informe else "Evaluación Diagnóstica FCA",
                             ParagraphStyle("h1c", parent=h1, alignment=1)),
-                  Paragraph("Evaluación Diagnóstica FCA" if informe else "Reporte de resultados",
+                  Paragraph(SUBTITULO_INFORME if informe else "Reporte de resultados",
                             ParagraphStyle("h3c", parent=h3, alignment=1, fontSize=8.5))]
         t = Table([[logo(LOGOS[0]), centro, logo(LOGOS[1])]], colWidths=[2.9 * cm, ancho - 5.8 * cm, 2.9 * cm])
         t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (0, 0), "LEFT"),

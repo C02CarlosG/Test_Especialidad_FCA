@@ -23,6 +23,7 @@ from typing import Sequence
 from modules.config_loader import TestConfig
 from modules.scoring import ResultadoTest, UMBRAL_EMPATE
 
+SUBTITULO_INFORME = "Evaluación Diagnóstica FCA - Especialidades Lic. en Administración"
 TITULO_CIERRE = "El desafío de la elección: más allá del interés"
 SUBTITULO_CIERRE = ("Confía en lo que descubriste sobre ti. Esta elección es el primer paso para construir "
                     "un futuro que te inspire.")

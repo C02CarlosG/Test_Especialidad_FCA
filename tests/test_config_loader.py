@@ -45,7 +45,7 @@ def test_test_1_real_big_five():
 
 def test_test_2_real_orientacion():
     cfg = load_test_config(CARPETA / "2_test_orientacion_especialidades.xlsx")
-    assert cfg.titulo == "Test 2: Administration Specialties"
+    assert cfg.titulo == "Test 2: Especialidades Lic. en Administración"
     assert len(cfg.especialidades) == 5 and len(cfg.preguntas) == 25
     assert (cfg.valor_min, cfg.valor_max) == (0, 4)
     assert {p.especialidad_codigo for p in cfg.preguntas} == {"MKT", "CH", "AF", "NI", "EMP"}

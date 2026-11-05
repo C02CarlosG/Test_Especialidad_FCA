@@ -70,7 +70,7 @@ def test_pdf_es_valido_y_contiene_los_datos(resultados):
         pytest.skip("pdftotext no está instalado: solo se validó la estructura del PDF")
     texto = subprocess.run(["pdftotext", "-layout", "-", "-"], input=pdf, capture_output=True, check=True).stdout.decode()
     for esperado in ("123456", "Ana Pérez López", "Test 1: The Big Five", "Dónde coinciden tus dos tests", "15/10/2026",
-                     "no constituyen un diagnóstico", "Test 2: Administration Specialties"):
+                     "no constituyen un diagnóstico", "Test 2: Especialidades Lic. en Administración"):
         assert esperado in texto
     for e in resultados[0].especialidades:
         assert e.nombre in texto
@@ -157,7 +157,7 @@ def test_radar_con_un_solo_eje_con_dato_no_falla(resultados):
 
 def test_el_radar_conserva_su_proporcion_en_el_pdf(resultados, tmp_path):
     from modules.reports import dimensiones_png
-    png = grafica_radar(resultados, ["Test 1: The Big Five", "Test 2: Administration Specialties"])
+    png = grafica_radar(resultados, ["Test 1: The Big Five", "Test 2: Especialidades Lic. en Administración"])
     w, h = dimensiones_png(png)
     assert w > 300 and h > 300 and abs(w / h - 1.0) < 0.6
     if shutil.which("pdfimages"):

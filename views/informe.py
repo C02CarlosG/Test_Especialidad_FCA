@@ -13,7 +13,7 @@ import streamlit as st
 
 from modules.acceso import Alumno
 from modules.graficas import grafica_campos, grafica_ocean
-from modules.interpretacion import ALCANCE, SUBTITULO_CIERRE, TITULO_CIERRE, Campo, Informe, lectura_campo
+from modules.interpretacion import ALCANCE, SUBTITULO_CIERRE, SUBTITULO_INFORME, TITULO_CIERRE, Campo, Informe, lectura_campo
 from modules.reports import pct
 from views import tema
 
@@ -48,6 +48,7 @@ def mostrar(alumno: Alumno, informe: Informe, fecha: datetime, cache: dict) -> N
 
     dom, com = informe.dominante, informe.complementario
     _caja("cab", f'<h1>Reporte de Evaluación Integral</h1>'
+                 f'<p class="datos"><b>{escape(SUBTITULO_INFORME)}</b></p>'
                  f'<p class="datos">{escape(alumno.nombre_completo)} · Matrícula {escape(alumno.matricula)} · '
                  f'Tutor: {escape(alumno.tutor)}</p><p class="folio">Fecha: {fecha.strftime("%d/%m/%Y")}</p>'
                  f'<div class="alcance"><b>Alcance del instrumento:</b> {escape(ALCANCE)}</div>')
