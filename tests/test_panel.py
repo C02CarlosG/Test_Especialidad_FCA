@@ -8,7 +8,7 @@ from fakes import FakeRepo
 from modules.acceso import Alumno
 from modules.avance import ProgresoTest
 from modules.config_loader import load_all_tests
-from modules.panel import cargar_panel, sincronizar_resultados
+from modules.panel import cargar_panel, lista_de_alumnos, reiniciar, sincronizar_resultados
 
 RAIZ = Path(__file__).resolve().parent.parent
 TEST1, TEST2 = load_all_tests(RAIZ / "config" / "tests")
@@ -83,3 +83,28 @@ def test_sincronizar_guarda_un_resultado_por_test_terminado_y_calificable():
     panel = cargar_panel(repo, (TEST1, TEST2))
     assert sincronizar_resultados(repo, panel, AHORA) == 3  # Ana x2 + Beto x1
     assert {(a, t) for a, t, _ in repo.resultados_guardados} == {("a1", TEST1.id), ("a1", TEST2.id), ("a2", TEST1.id)}
+
+
+def test_lista_de_alumnos_une_la_lista_autorizada_con_los_registrados():
+    repo = poblar()
+    repo.autorizadas = {"100002": "PEREZ LOPEZ BETO", "300001": "NUEVO ALUMNO UNO"}
+    lista = lista_de_alumnos(cargar_panel(repo, (TEST1, TEST2)))
+    assert [(x.matricula, x.fila is not None, x.en_lista) for x in lista] == [
+        ("100002", True, True), ("300001", False, True),
+        ("100001", True, False), ("100003", True, False), ("100004", True, False)]
+
+
+def test_reiniciar_desde_un_test_borra_ese_y_los_siguientes_y_reabre_al_alumno():
+    repo = poblar()
+    ana = repo.alumnos["100001"]  # terminó todo
+    reiniciar(repo, ana, (TEST1, TEST2), desde=1)
+    assert repo.reinicios == [("a1", (TEST2.id,), False)]
+    assert ("a1", TEST1.id) in repo.respuestas and ("a1", TEST2.id) not in repo.respuestas
+    assert repo.alumnos["100001"].estado == "en_curso"
+
+
+def test_reiniciar_con_borrar_registro_elimina_al_alumno_con_todo_lo_suyo():
+    repo = poblar()
+    reiniciar(repo, repo.alumnos["100002"], (TEST1, TEST2), desde=1, borrar_registro=True)
+    assert "100002" not in repo.alumnos
+    assert not [k for k in repo.respuestas if k[0] == "a2"] and not [k for k in repo.progreso if k[0] == "a2"]

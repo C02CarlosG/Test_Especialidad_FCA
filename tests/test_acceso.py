@@ -5,7 +5,8 @@ import pytest
 from fakes import FakeRepo, alumno
 from modules import security as sec
 from modules.acceso import (AccesoBloqueado, AccesoError, DatosAcceso, DatosInvalidos,
-                            MatriculaNoDisponible, iniciar_acceso)
+                            MatriculaNoAutorizada, MatriculaNoDisponible, buscar_autorizado,
+                            iniciar_acceso, separar_nombre)
 
 AHORA = datetime(2026, 10, 14, 12, 0, tzinfo=timezone.utc)
 IP = "203.0.113.9"
@@ -32,8 +33,26 @@ def test_alumno_nuevo_queda_registrado():
     assert a.nombre_completo == "Ana Pérez López" and a.edad == 20 and a.tutor == "Mtro. Ruiz"
 
 
-def test_cualquier_matricula_valida_entra_sin_codigo_ni_lista():
-    assert iniciar_acceso(repo(), datos(matricula=" 654321 "), IP, AHORA).alumno.matricula == "654321"
+def test_matricula_en_la_lista_entra_aunque_venga_con_espacios():
+    r = FakeRepo(autorizadas={"654321": "PEREZ LOPEZ ANA"})
+    assert iniciar_acceso(r, datos(matricula=" 654321 "), IP, AHORA).alumno.matricula == "654321"
+
+
+def test_matricula_fuera_de_la_lista_no_entra_ni_se_registra():
+    r = FakeRepo(autorizadas={"654321": "PEREZ LOPEZ ANA"})
+    with pytest.raises(MatriculaNoAutorizada):
+        iniciar_acceso(r, datos(matricula="123456"), IP, AHORA)
+    assert not r.alumnos
+    assert len(r.intentos) == 2  # cuenta como intento fallido (matrícula y cliente)
+
+
+def test_probar_matriculas_al_azar_termina_en_bloqueo():
+    r = FakeRepo(autorizadas={"654321": "PEREZ LOPEZ ANA"})
+    for i in range(sec.MAX_INTENTOS_CLIENTE):
+        with pytest.raises(MatriculaNoAutorizada):
+            iniciar_acceso(r, datos(matricula=f"{100000 + i}"), IP, AHORA)
+    with pytest.raises(AccesoBloqueado):
+        iniciar_acceso(r, datos(matricula="654321"), IP, AHORA)
 
 
 def test_sin_aceptar_privacidad_no_entra():
@@ -117,3 +136,35 @@ def test_ip_que_prueba_muchas_matriculas_se_bloquea():
     with pytest.raises(AccesoBloqueado):
         iniciar_acceso(r, datos(matricula="999999"), IP, AHORA)
     assert iniciar_acceso(r, datos(matricula="999999"), "198.51.100.7", AHORA).alumno  # otra IP
+
+
+@pytest.mark.parametrize("nombre, esperado", [
+    ("AGUILAR VELASCO ALANN JOSUE", ("Aguilar", "Velasco", "Alann Josue")),
+    ("DE LA VEGA CRUZ MARÍA FERNANDA", ("De La Vega", "Cruz", "María Fernanda")),
+    ("HERNANDEZ PORRAS TADEO DE JESUS", ("Hernandez", "Porras", "Tadeo De Jesus")),
+    ("VALENCIA-VELASQUEZ INGRID MARITZA", ("Valencia-Velasquez", "Ingrid", "Maritza")),
+    ("ALONSO AGATON XIMENA", ("Alonso", "Agaton", "Ximena")),
+    ("PEÑA RUIZ", ("Peña", "", "Ruiz")),
+    ("PEÑA", ("Peña", "", "")),
+])
+def test_separar_nombre(nombre, esperado):
+    assert separar_nombre(nombre) == esperado
+
+
+def test_buscar_autorizado_devuelve_el_nombre_y_no_cuenta_intento():
+    r = FakeRepo(autorizadas={"654321": "PEREZ LOPEZ ANA"})
+    assert buscar_autorizado(r, " 654321 ", IP, AHORA) == "PEREZ LOPEZ ANA"
+    assert not r.intentos
+
+
+def test_buscar_autorizado_ignora_lo_incompleto_sin_consultar_ni_contar():
+    r = FakeRepo(autorizadas={"654321": "X"})
+    assert buscar_autorizado(r, "6543", IP, AHORA) is None and not r.intentos
+
+
+def test_buscar_matriculas_ajenas_cuenta_intentos_y_termina_bloqueando():
+    r = FakeRepo(autorizadas={"654321": "X"})
+    for i in range(sec.MAX_INTENTOS_MATRICULA):
+        assert buscar_autorizado(r, "111111", IP, AHORA) is None
+    with pytest.raises(AccesoBloqueado):
+        buscar_autorizado(r, "111111", IP, AHORA)

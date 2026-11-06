@@ -10,16 +10,16 @@ from datetime import datetime
 from typing import Sequence
 from zoneinfo import ZoneInfo
 
-import pandas as pd
 import streamlit as st
 
 from modules import admin_auth
 from modules.config_loader import TestConfig
-from modules.panel import PanelDatos, cargar_panel, sincronizar_resultados
+from modules.panel import PanelDatos, cargar_panel, lista_de_alumnos, reiniciar, sincronizar_resultados
 from modules.qr_utils import UrlInvalida, qr_png, validar_url
 from modules.reports import excel_individual, pdf_individual
 from modules.reports_admin import ESTADOS, excel_concentrado, nombre_pdf, zip_pdfs
 from views import tema
+from views.alumno import SEMESTRES
 
 log = logging.getLogger(__name__)
 ZONA = ZoneInfo("America/Mexico_City")
@@ -100,21 +100,6 @@ def _login(repo, esperada, cliente_ip: str) -> None:
         st.rerun()
 
 
-def _tabla_avance(panel: PanelDatos) -> pd.DataFrame:
-    filas = []
-    for f in panel.filas:
-        a = f.alumno
-        fila = {"Matrícula": a.matricula, "Nombre": a.nombre_completo, "Semestre": a.semestre, "Edad": a.edad, "Tutor": a.tutor,
-                "Registro": a.creado_en.astimezone(ZONA).strftime("%d/%m/%Y %H:%M") if a.creado_en else "",
-                "Estado": ESTADOS.get(a.estado, a.estado)}
-        for n, t in enumerate(panel.tests, start=1):
-            fila[f"Test {n}"] = f"{ESTADOS[f.estado_tests[n - 1]]} ({f.contestadas[n - 1]}/{len(t.preguntas)})"
-        for n, r in enumerate(f.resultados, start=1):
-            fila[f"1ª opción T{n}"] = next((x.nombre for x in r.afinidades if x.codigo == r.principal), "") if r else ""
-        filas.append(fila)
-    return pd.DataFrame(filas)
-
-
 def _cargar(repo, tests: Sequence[TestConfig]) -> PanelDatos:
     if "panel" not in st.session_state:
         with st.spinner("Cargando alumnos…"):
@@ -123,16 +108,100 @@ def _cargar(repo, tests: Sequence[TestConfig]) -> PanelDatos:
     return st.session_state["panel"]
 
 
-def _pestana_avance(panel: PanelDatos) -> None:
+POR_PAGINA = 20
+_TONO = {"terminado": "alto", "en_curso": "medio", "sin_registrar": "bajo"}
+
+
+def _pestana_avance(repo, tests: Sequence[TestConfig], panel: PanelDatos) -> None:
+    if aviso := st.session_state.pop("admin_aviso", None):
+        st.success(aviso)
     st.caption(f"Datos cargados a las {st.session_state['panel_en'].strftime('%H:%M')}. "
                "Pulsa «Actualizar datos» para ver lo más reciente.")
     tema.frase_avance(len(panel.filas), panel.terminados, len(panel.filas) - panel.terminados)
     for aviso in panel.problemas:
         st.warning(aviso)
-    if panel.filas:
-        st.dataframe(_tabla_avance(panel), hide_index=True, width="stretch")
-    else:
+    lista = lista_de_alumnos(panel)
+    if not lista:
         st.info("Todavía no hay alumnos registrados.")
+        return
+    c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
+    buscar = c1.text_input("Buscar", placeholder="Matrícula o nombre", max_chars=80)
+    if q := buscar.strip().casefold():
+        lista = [x for x in lista if q in x.matricula or q in x.nombre.casefold()]
+    paginas = max(1, -(-len(lista) // POR_PAGINA))
+    pagina = c2.number_input(f"Página (de {paginas})", 1, paginas, 1, step=1) if paginas > 1 else 1
+    if not lista:
+        st.info("Ningún alumno coincide con la búsqueda.")
+        return
+    anchos = [11, 1.7]
+    with st.container(key="lista_alumnos"):
+        with st.container(key="cabecera_lista"):
+            izq, _ = st.columns(anchos)
+            with izq:
+                tema.cabecera_lista([f"Test {n}" for n in range(1, len(tests) + 1)])
+        for item in lista[(pagina - 1) * POR_PAGINA: pagina * POR_PAGINA]:
+            a = item.fila.alumno if item.fila else None
+            estado = a.estado if a else "sin_registrar"
+            nota = "Fuera de la lista" if panel.autorizados and not item.en_lista else \
+                item.estatus.capitalize() if item.estatus == "IRREGULAR" else ""
+            with st.container(key=f"fila_{item.matricula}"):
+                izq, der = st.columns(anchos, vertical_alignment="center")
+                with izq:
+                    tema.fila_lista(item.matricula, a.nombre_completo if a else item.nombre,
+                                    ESTADOS.get(estado, "Sin registrar"), _TONO[estado],
+                                    [(item.fila.contestadas[n], len(t.preguntas)) for n, t in enumerate(tests)] if item.fila else None,
+                                    nota, n_tests=len(tests))
+                if item.fila and der.button("Reiniciar", key=f"rei_{a.id}", icon=":material/restart_alt:", width="stretch"):
+                    _dialogo_reinicio(repo, tests, item.fila)
+
+
+def _opciones_reinicio(tests: Sequence[TestConfig], fila) -> list[tuple[str, int, int | None]]:
+    """(texto, respuestas que se borran, desde qué test) para cada cosa que se puede reiniciar. Solo se ofrecen los
+    tests con respuestas guardadas; `None` = quitar el registro. Los tests van en orden, así que reiniciar uno borra los siguientes."""
+    opciones = []
+    ultimo = len(tests) - 1
+    for i in range(len(tests)):
+        if fila.contestadas[i]:
+            texto = (f"Rehacer el Test {i + 1}" if i == ultimo else
+                     f"Rehacer el Test {i + 1} y el Test {i + 2}" if i + 1 == ultimo else
+                     f"Rehacer del Test {i + 1} al Test {ultimo + 1}")
+            opciones.append((texto, sum(fila.contestadas[i:]), i))
+    opciones.append(("Quitar su registro y sus datos", sum(fila.contestadas), None))
+    return opciones
+
+
+@st.dialog("Reiniciar test", width="medium")
+def _dialogo_reinicio(repo, tests: Sequence[TestConfig], fila) -> None:
+    a = fila.alumno
+    tema.ficha_reinicio(a.matricula, a.nombre_completo,
+                        f"{SEMESTRES[a.semestre - 1] if a.semestre else 'Semestre sin indicar'} · {a.edad} años · Tutor: {a.tutor}",
+                        [(t.titulo, fila.contestadas[i], len(t.preguntas)) for i, t in enumerate(tests)])
+    opciones = _opciones_reinicio(tests, fila)
+    # Por defecto, lo menos destructivo: el último test con respuestas (o el registro, si no hay ninguna).
+    que = st.radio("¿Qué quieres reiniciar?", range(len(opciones)), index=max(0, len(opciones) - 2), key=f"que_{a.id}",
+                   format_func=lambda i: opciones[i][0])
+    texto, borradas, desde = opciones[que]
+    if desde is None:
+        efecto = "Tendrá que registrarse otra vez con su matrícula."
+        boton = "Quitar registro"
+    else:
+        efecto = "Al entrar con su matrícula y nombre, volverá a contestar desde ahí."
+        boton = f"Borrar {borradas} respuesta" + ("" if borradas == 1 else "s")
+    st.html(f'<p class="rei-efecto">{efecto} Esta acción no se puede deshacer.</p>')
+    c1, c2 = st.columns(2)
+    if c1.button("Cancelar", width="stretch", key=f"cancelar_{a.id}"):
+        st.rerun()
+    if c2.button(boton, type="primary", width="stretch", key="confirmar_reinicio"):
+        try:
+            reiniciar(repo, a, tests, desde or 0, desde is None)
+        except Exception:
+            log.exception("No se pudo reiniciar al alumno")
+            st.error("No se pudo reiniciar. Intenta de nuevo.")
+            return
+        st.session_state["admin_aviso"] = (f"{a.matricula} · {a.nombre_completo}: "
+                                           f"{'registro quitado' if desde is None else 'test reiniciado'}.")
+        st.session_state.pop("panel", None)
+        st.rerun()
 
 
 def _pestana_descargas(repo, panel: PanelDatos) -> None:
@@ -213,9 +282,9 @@ def render(repo, tests: Sequence[TestConfig], esperada: object, cliente_ip: str,
         log.exception("No se pudo cargar el panel")
         st.error("No se pudieron cargar los datos. Pulsa «Actualizar datos» para reintentar.")
         return
-    avance, descargas, qr = st.tabs(["Avance", "Descargas", "Código QR"])
+    avance, descargas, qr = st.tabs(["Alumnos", "Descargas", "Código QR"])
     with avance:
-        _pestana_avance(panel)
+        _pestana_avance(repo, tests, panel)
     with descargas:
         _pestana_descargas(repo, panel)
     with qr:

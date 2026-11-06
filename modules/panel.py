@@ -15,8 +15,17 @@ from modules.config_loader import TestConfig
 from modules.scoring import ErrorDeCalificacion, ResultadoTest, calificar
 
 
+@dataclass(frozen=True)
+class Autorizado:
+    matricula: str
+    nombre: str
+    estatus: str  # REGULAR | IRREGULAR | PRUEBA, tal como viene en la lista
+
+
 class RepositorioPanel(Protocol):
     def listar_alumnos(self) -> list[Alumno]: ...
+    def listar_autorizados(self) -> list[Autorizado]: ...
+    def reiniciar_alumno(self, alumno_id: str, test_ids: Sequence[str], borrar_registro: bool) -> None: ...
     def obtener_progreso_todos(self) -> dict[str, dict[str, ProgresoTest]]: ...
     def obtener_respuestas_todas(self) -> dict[str, dict[str, dict[str, int | None]]]: ...
     def guardar_resultado(self, alumno_id: str, resultado: ResultadoTest, ahora: datetime) -> None: ...
@@ -42,6 +51,7 @@ class PanelDatos:
     # configuración: es el respaldo de la BD y no debe perder nada.
     respuestas: dict[str, dict[str, dict[str, int | None]]]
     problemas: tuple[str, ...]  # avisos para el docente (versiones distintas, respuestas incompletas)
+    autorizados: tuple[Autorizado, ...] = ()  # la lista de alumnos con acceso, registrados o no
 
     @property
     def terminados(self) -> int:
@@ -74,7 +84,39 @@ def cargar_panel(repo: RepositorioPanel, tests: Sequence[TestConfig]) -> PanelDa
                         problemas.append(f"{a.matricula}: no se pudo calificar '{t.titulo}' ({exc}).")
             resultados.append(resultado)
         filas.append(FilaAlumno(a, tuple(estados), tuple(conteos), tuple(resultados)))
-    return PanelDatos(tuple(tests), tuple(filas), respuestas, tuple(problemas))
+    return PanelDatos(tuple(tests), tuple(filas), respuestas, tuple(problemas),
+                      tuple(repo.listar_autorizados()))
+
+
+@dataclass(frozen=True)
+class FilaLista:
+    """Una línea de la lista de alumnos: alguien de la lista autorizada (registrado o no) o, si ya se
+    había registrado y no está en la lista, un registro huérfano."""
+    matricula: str
+    nombre: str
+    estatus: str
+    fila: FilaAlumno | None  # None = todavía no se registra
+    en_lista: bool
+
+
+def lista_de_alumnos(panel: PanelDatos) -> list[FilaLista]:
+    """Toda la lista autorizada con el avance de quien ya entró, y al final los registrados que no están en ella."""
+    registrados = {f.alumno.matricula: f for f in panel.filas}
+    lista = [FilaLista(a.matricula, a.nombre, a.estatus or "", registrados.get(a.matricula), True)
+             for a in panel.autorizados]
+    en_lista = {a.matricula for a in panel.autorizados}
+    lista += [FilaLista(f.alumno.matricula, f.alumno.nombre_completo, "", f, False)
+              for f in panel.filas if f.alumno.matricula not in en_lista]
+    return lista
+
+
+def reiniciar(repo: RepositorioPanel, alumno: Alumno, tests: Sequence[TestConfig], desde: int,
+              borrar_registro: bool = False) -> None:
+    """Borra las respuestas del test número `desde` (0 = el primero) y de los que le siguen, para que el
+    alumno los conteste de nuevo; el orden de los tests es fijo, así que no puede quedar uno terminado
+    después de uno borrado. Con `borrar_registro` se elimina además al alumno, que tendrá que registrarse otra vez."""
+    ids = [t.id for t in (tests if borrar_registro else tests[desde:])]
+    repo.reiniciar_alumno(alumno.id, ids, borrar_registro)
 
 
 def sincronizar_resultados(repo: RepositorioPanel, panel: PanelDatos, ahora: datetime) -> int:
