@@ -224,6 +224,14 @@ def test_el_boton_de_reinicio_esta_en_la_fila_de_cada_alumno_registrado():
     assert [b.key for b in at.button if b.key and b.key.startswith("rei_")] == ["rei_a1", "rei_a2", "rei_a3", "rei_a4"]
 
 
+def test_los_reportes_se_descargan_desde_la_fila_solo_de_quien_termino():
+    at = _entrar(_nuevo())
+    ids = [b.proto.id for b in at.get("download_button")]
+    assert any(i.endswith("-pdf_a1") for i in ids) and any(i.endswith("-xlsx_a1") for i in ids)  # Ana terminó todo
+    assert not any(i.endswith(("-pdf_a2", "-pdf_a3", "-pdf_a4")) for i in ids)
+    assert at.button(key="sin_reporte_a2").disabled and "sin_reporte_a1" not in [b.key for b in at.button]
+
+
 def test_el_cuadro_de_reinicio_dice_cuantas_respuestas_se_borran_y_cancelar_no_borra_nada():
     at = _abrir_reinicio(None, "a2")  # Beto: 25 en el test 1 y 10 en el 2
     assert at.radio(key="que_a2").options == ["Rehacer el Test 1 y el Test 2", "Rehacer el Test 2", "Quitar su registro y sus datos"]

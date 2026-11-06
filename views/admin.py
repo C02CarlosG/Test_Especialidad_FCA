@@ -133,10 +133,10 @@ def _pestana_avance(repo, tests: Sequence[TestConfig], panel: PanelDatos) -> Non
     if not lista:
         st.info("Ningún alumno coincide con la búsqueda.")
         return
-    anchos = [11, 1.7]
+    anchos = [9.4, 1.9, 1.7]  # datos, reportes, reiniciar
     with st.container(key="lista_alumnos"):
         with st.container(key="cabecera_lista"):
-            izq, _ = st.columns(anchos)
+            izq, *_ = st.columns(anchos)
             with izq:
                 tema.cabecera_lista([f"Test {n}" for n in range(1, len(tests) + 1)])
         for item in lista[(pagina - 1) * POR_PAGINA: pagina * POR_PAGINA]:
@@ -145,14 +145,35 @@ def _pestana_avance(repo, tests: Sequence[TestConfig], panel: PanelDatos) -> Non
             nota = "Fuera de la lista" if panel.autorizados and not item.en_lista else \
                 item.estatus.capitalize() if item.estatus == "IRREGULAR" else ""
             with st.container(key=f"fila_{item.matricula}"):
-                izq, der = st.columns(anchos, vertical_alignment="center")
+                izq, centro, der = st.columns(anchos, vertical_alignment="center")
                 with izq:
                     tema.fila_lista(item.matricula, a.nombre_completo if a else item.nombre,
                                     ESTADOS.get(estado, "Sin registrar"), _TONO[estado],
                                     [(item.fila.contestadas[n], len(t.preguntas)) for n, t in enumerate(tests)] if item.fila else None,
                                     nota, n_tests=len(tests))
-                if item.fila and der.button("Reiniciar", key=f"rei_{a.id}", icon=":material/restart_alt:", width="stretch"):
-                    _dialogo_reinicio(repo, tests, item.fila)
+                if item.fila:
+                    with centro:
+                        _boton_reportes(panel, item.fila)
+                    if der.button("Reiniciar", key=f"rei_{a.id}", icon=":material/restart_alt:", width="stretch"):
+                        _dialogo_reinicio(repo, tests, item.fila)
+
+
+def _boton_reportes(panel: PanelDatos, fila) -> None:
+    """«Reportes»: PDF y Excel del alumno, que se generan al descargar. Sin los tests terminados no hay reporte."""
+    a = fila.alumno
+    if not fila.completo:
+        st.button("Reportes", key=f"sin_reporte_{a.id}", icon=":material/download:", width="stretch", disabled=True,
+                  help="Todavía no termina todos los tests.")
+        return
+    fecha = st.session_state["panel_en"]  # el reporte lleva la hora real de los datos, no la del clic
+    with st.popover("Reportes", icon=":material/download:", width="stretch"):
+        st.caption(a.nombre_completo)
+        st.download_button("PDF", _vigente(lambda: pdf_individual(a, panel.tests, list(fila.resultados), fecha)),
+                           file_name=nombre_pdf(fila), mime="application/pdf", key=f"pdf_{a.id}",
+                           icon=":material/picture_as_pdf:", width="stretch", on_click="ignore")
+        st.download_button("Excel", _vigente(lambda: excel_individual(a, panel.tests, list(fila.resultados), fecha)),
+                           file_name=nombre_pdf(fila).replace(".pdf", ".xlsx"), mime=XLSX, key=f"xlsx_{a.id}",
+                           icon=":material/table_chart:", width="stretch", on_click="ignore")
 
 
 def _opciones_reinicio(tests: Sequence[TestConfig], fila) -> list[tuple[str, int, int | None]]:
