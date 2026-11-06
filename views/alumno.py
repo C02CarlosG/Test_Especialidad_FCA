@@ -12,7 +12,8 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from modules.acceso import AccesoError, DatosAcceso, DatosInvalidos, Repositorio, iniciar_acceso
+from modules.acceso import (AccesoBloqueado, AccesoError, DatosAcceso, DatosInvalidos, Repositorio,
+                            buscar_autorizado, iniciar_acceso, separar_nombre)
 from modules.security import SEMESTRE_MAXIMO, SEMESTRE_MINIMO
 from views import tema, test
 
@@ -31,18 +32,52 @@ def _encabezado(tests: Sequence, paso: int = 0) -> None:
     st.caption(SUBTITULO)
 
 
+SEMESTRE_LISTA = 5  # la lista autorizada es de 5.º semestre
+
+
+def _autocompletar(repo: Repositorio, cliente_ip: str) -> None:
+    """Al escribir la matrícula (Enter o salir del campo) llena el nombre y el semestre desde la lista."""
+    ss = st.session_state
+    for campo in ("reg_paterno", "reg_materno", "reg_nombres"):
+        ss[campo] = ""
+    ss["reg_semestre"] = None
+    ss["reg_aviso_matricula"] = None
+    try:
+        nombre = buscar_autorizado(repo, ss.get("reg_matricula", ""), cliente_ip)
+    except AccesoBloqueado as exc:
+        ss["reg_aviso_matricula"] = ("error", exc.mensaje)
+    except Exception:  # BD caída, red, etc.: el registro sigue siendo posible a mano
+        log.exception("No se pudo consultar la lista de alumnos")
+    else:
+        if nombre is not None:
+            ss["reg_paterno"], ss["reg_materno"], ss["reg_nombres"] = separar_nombre(nombre)
+            ss["reg_semestre"] = SEMESTRE_LISTA
+            ss["reg_aviso_matricula"] = ("ok", "Cargamos tus datos de la lista. Revisa que sean correctos.")
+        elif len(ss.get("reg_matricula", "").strip()) == 6:
+            ss["reg_aviso_matricula"] = ("error", "Esta matrícula no está en la lista de alumnos autorizados. "
+                                                  "Revísala o avisa a tu tutor.")
+
+
 def _registro(repo: Repositorio, tests: Sequence, aviso_md: str, cliente_ip: str) -> None:
     _encabezado(tests)
     st.subheader("Registro del estudiante")
+    # La matrícula va fuera del formulario: un formulario no reacciona hasta enviarse, y aquí debe llenar
+    # los demás campos en cuanto se escribe.
+    matricula = st.text_input("Matrícula *", max_chars=6, placeholder="6 números", key="reg_matricula",
+                              on_change=_autocompletar, args=(repo, cliente_ip),
+                              help="Escríbela y presiona Enter: tus datos se cargan solos.")
+    aviso = st.session_state.get("reg_aviso_matricula")
+    if aviso and matricula.strip():
+        (st.success if aviso[0] == "ok" else st.error)(aviso[1])
     with st.form("registro"):
         c1, c2, c3 = st.columns(3)
-        paterno = c1.text_input("Apellido paterno *", max_chars=80, autocomplete="family-name")
-        materno = c2.text_input("Apellido materno *", max_chars=80)
-        nombres = c3.text_input("Nombre(s) *", max_chars=80, autocomplete="given-name")
-        c4, c5, c6 = st.columns(3)
-        matricula = c4.text_input("Matrícula *", max_chars=6, placeholder="6 números")
+        paterno = c1.text_input("Apellido paterno *", max_chars=80, autocomplete="family-name", key="reg_paterno")
+        materno = c2.text_input("Apellido materno *", max_chars=80, key="reg_materno")
+        nombres = c3.text_input("Nombre(s) *", max_chars=80, autocomplete="given-name", key="reg_nombres")
+        c5, c6 = st.columns(2)
         semestre = c5.selectbox("Semestre *", list(range(SEMESTRE_MINIMO, SEMESTRE_MAXIMO + 1)), index=None,
-                                format_func=lambda n: SEMESTRES[n - 1], placeholder="Elige")
+                                format_func=lambda n: SEMESTRES[n - 1], placeholder="Elige",
+                                key="reg_semestre")
         edad = c6.number_input("Edad *", min_value=0, max_value=120, value=None, step=1,
                                placeholder="Años cumplidos")
         c7, c8 = st.columns([2, 1])

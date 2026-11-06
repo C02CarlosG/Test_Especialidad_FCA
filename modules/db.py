@@ -6,13 +6,14 @@ nunca se envía al navegador. RLS bloquea cualquier otro acceso.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from postgrest.exceptions import APIError
 from supabase import Client, create_client
 
 from modules.acceso import Alumno, MatriculaDuplicada
 from modules.avance import ProgresoTest
+from modules.panel import Autorizado
 from modules.scoring import ResultadoTest
 
 
@@ -71,6 +72,11 @@ class SupabaseRepo:
              .order("id", desc=True).limit(1).execute())
         if r.data:
             self._c.table("intentos_fallidos").delete().eq("id", r.data[0]["id"]).execute()
+
+    def nombre_autorizado(self, matricula: str) -> str | None:
+        r = (self._c.table("alumnos_autorizados").select("nombre")
+             .eq("matricula", matricula).limit(1).execute())
+        return r.data[0]["nombre"] if r.data else None
 
     def obtener_alumno_por_matricula(self, matricula: str) -> Alumno | None:
         r = (self._c.table("alumnos").select(_COLS_ALUMNO)
@@ -142,6 +148,18 @@ class SupabaseRepo:
 
     def listar_alumnos(self) -> list[Alumno]:
         return [_alumno(f) for f in self._todas("alumnos", _COLS_ALUMNO + ",creado_en", ("creado_en", "id"))]
+
+    def listar_autorizados(self) -> list[Autorizado]:
+        return [Autorizado(f["matricula"], f["nombre"], f.get("estatus") or "")
+                for f in self._todas("alumnos_autorizados", "matricula,nombre,estatus", ("nombre", "matricula"))]
+
+    def reiniciar_alumno(self, alumno_id: str, test_ids: Sequence[str], borrar_registro: bool) -> None:
+        if borrar_registro:  # borra en cascada sus respuestas, avance y resultados
+            self._c.table("alumnos").delete().eq("id", alumno_id).execute()
+            return
+        for tabla in ("respuestas", "progreso_tests", "resultados"):
+            self._c.table(tabla).delete().eq("alumno_id", alumno_id).in_("test_id", list(test_ids)).execute()
+        self._c.table("alumnos").update({"estado": "en_curso"}).eq("id", alumno_id).execute()
 
     def obtener_progreso_todos(self) -> dict[str, dict[str, ProgresoTest]]:
         por_alumno: dict[str, dict[str, ProgresoTest]] = {}

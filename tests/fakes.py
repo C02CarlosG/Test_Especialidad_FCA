@@ -6,11 +6,15 @@ from dataclasses import replace
 
 from modules.acceso import Alumno, MatriculaDuplicada
 from modules.avance import ProgresoTest
+from modules.panel import Autorizado
 from modules.config_loader import Especialidad, OpcionEscala, Pregunta, TestConfig
 
 
 class FakeRepo:
-    def __init__(self, alumnos=()):
+    def __init__(self, alumnos=(), autorizadas=None):
+        # {matrícula: nombre}. None = cualquier matrícula está autorizada (la mayoría de las pruebas
+        # no se ocupa de la lista).
+        self.autorizadas = None if autorizadas is None else dict(autorizadas)
         self.alumnos = {a.matricula: a for a in alumnos}
         self.intentos: list[tuple[str, str, datetime]] = []
         self._ids = count(1)
@@ -18,6 +22,7 @@ class FakeRepo:
         self.progreso: dict[tuple[str, str], ProgresoTest] = {}
         self.respuestas: dict[tuple[str, str], dict] = {}
         self.resultados_guardados: list = []
+        self.reinicios: list = []
         self.carrera = False  # simula que otro envío gana la matrícula justo antes de insertar
 
     def contar_intentos(self, tipo, clave, desde):
@@ -31,6 +36,11 @@ class FakeRepo:
             if self.intentos[i][0] == tipo and self.intentos[i][1] == clave:
                 del self.intentos[i]
                 return
+
+    def nombre_autorizado(self, matricula):
+        if self.autorizadas is None:
+            return "SIN LISTA"
+        return self.autorizadas.get(matricula)
 
     def obtener_alumno_por_matricula(self, matricula):
         return self.alumnos.get(matricula)
@@ -69,6 +79,21 @@ class FakeRepo:
     # --- panel del docente ---
     def listar_alumnos(self):
         return list(self.alumnos.values())
+
+    def listar_autorizados(self):
+        return [Autorizado(m, n, "REGULAR") for m, n in (self.autorizadas or {}).items()]
+
+    def reiniciar_alumno(self, alumno_id, test_ids, borrar_registro):
+        self.reinicios.append((alumno_id, tuple(test_ids), borrar_registro))
+        if borrar_registro:
+            self.alumnos = {m: a for m, a in self.alumnos.items() if a.id != alumno_id}
+            test_ids = {t for (a, t) in [*self.progreso, *self.respuestas] if a == alumno_id}
+        for t in test_ids:
+            self.progreso.pop((alumno_id, t), None)
+            self.respuestas.pop((alumno_id, t), None)
+        for m, a in self.alumnos.items():
+            if a.id == alumno_id:
+                self.alumnos[m] = replace(a, estado="en_curso")
 
     def obtener_progreso_todos(self):
         por_alumno = {}

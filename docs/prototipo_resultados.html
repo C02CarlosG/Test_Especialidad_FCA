@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo de resultados · Evaluación Diagnóstica FCA</title>
+<style>
+@font-face { font-family:'Fraunces'; font-weight:100 900; src:url('../static/fonts/fraunces-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family:'Plus Jakarta Sans'; font-weight:200 800; src:url('../static/fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); }
+:root { --marino:#0F1E4A; --marino-2:#1B2F6B; --oro:#E5B300; --bruma:#EEF2F8; --papel:#fff; --linea:#D6DDEB;
+  --tinta:#1E2A4A; --suave:#5A6788; --verde:#17683F; --verde-f:#E3F3EA; --ambar:#8A5A00; --ambar-f:#FFF1C9;
+  --pizarra:#44506F; --pizarra-f:#E7EBF4;
+  --serif:'Fraunces','Iowan Old Style',Georgia,serif; --sans:'Plus Jakarta Sans',system-ui,sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bruma); color:var(--tinta); font-family:var(--sans); line-height:1.55; }
+main { max-width:860px; margin:0 auto; padding:1.2rem 16px 4rem; }
+h1,h2,h3 { font-family:var(--serif); color:var(--marino); letter-spacing:-.01em; margin:0; }
+h2 { font-size:1.35rem; margin:2.2rem 0 .3rem; }
+h2 + .sub { color:var(--suave); margin:0 0 1rem; font-size:.92rem; }
+.marca { display:grid; grid-template-columns:5rem 1fr 5rem; align-items:center; gap:1rem; padding-bottom:.9rem; border-bottom:1px solid var(--linea); }
+.marca img { width:100%; height:4rem; object-fit:contain; }
+.marca .inst { text-align:center; color:var(--marino); font-weight:600; font-size:.85rem; }
+.marca .inst small { display:block; font-weight:400; color:var(--suave); }
+.vista { display:flex; gap:.5rem; margin:1rem 0; }
+.vista button { font:inherit; font-weight:600; font-size:.88rem; padding:.5rem 1rem; border-radius:999px; border:1px solid var(--linea); background:var(--papel); color:var(--marino); cursor:pointer; }
+.vista button[aria-pressed=true] { background:var(--marino); color:#fff; border-color:var(--marino); }
+.aviso-proto { background:var(--ambar-f); color:var(--ambar); border-radius:8px; padding:.5rem .8rem; font-size:.82rem; }
+.hero { background:var(--marino); color:#fff; border-radius:16px; padding:1.6rem; margin-top:1rem; position:relative; overflow:hidden; }
+.hero::after { content:""; position:absolute; left:1.6rem; bottom:0; width:4rem; height:4px; background:var(--oro); }
+.hero .eyebrow { text-transform:uppercase; letter-spacing:.12em; font-size:.72rem; opacity:.75; }
+.hero h1 { color:#fff; font-size:clamp(1.8rem,6vw,2.6rem); line-height:1.1; margin:.35rem 0 .6rem; }
+.hero p { margin:0 0 .3rem; max-width:60ch; opacity:.92; }
+.hero .segunda { display:inline-block; margin-top:.8rem; background:rgba(255,255,255,.12); padding:.35rem .8rem; border-radius:999px; font-size:.88rem; }
+.card { background:var(--papel); border:1px solid var(--linea); border-radius:14px; padding:1.1rem 1.2rem; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+@media (max-width:680px) { .grid2 { grid-template-columns:1fr; } .marca { grid-template-columns:3.6rem 1fr 3.6rem; } }
+.chip { display:inline-block; font-size:.74rem; font-weight:700; padding:.12rem .55rem; border-radius:999px; white-space:nowrap; }
+.chip.alto { background:var(--verde-f); color:var(--verde); } .chip.medio { background:var(--ambar-f); color:var(--ambar); } .chip.bajo { background:var(--pizarra-f); color:var(--pizarra); }
+.dim { padding:.7rem 0; border-top:1px solid var(--linea); } .dim:first-child { border-top:0; }
+.dim .fila { display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; }
+.dim b { color:var(--marino); } .dim .num { font-family:var(--serif); font-size:1.15rem; color:var(--marino); }
+.dim p { margin:.2rem 0 0; font-size:.86rem; color:var(--suave); }
+.barra { height:8px; background:var(--pizarra-f); border-radius:4px; margin-top:.35rem; position:relative; }
+.barra i { display:block; height:100%; background:var(--marino-2); border-radius:4px; }
+.barra.oro i { background:var(--oro); }
+/* convergencia */
+.conv { display:grid; grid-template-columns:minmax(7rem,1.1fr) 3fr 3.2rem; gap:.4rem .8rem; align-items:center; padding:.65rem 0; border-top:1px solid var(--linea); }
+.conv:first-of-type { border-top:0; }
+.conv .nombre { font-weight:600; color:var(--marino); font-size:.92rem; }
+.pista { position:relative; height:26px; }
+.pista::before { content:""; position:absolute; left:0; right:0; top:12px; height:2px; background:var(--linea); }
+.punto { position:absolute; top:5px; width:16px; height:16px; border-radius:50%; transform:translateX(-50%); border:2px solid #fff; box-shadow:0 0 0 1px var(--linea); }
+.punto.t1 { background:var(--oro); } .punto.t2 { background:var(--marino-2); }
+.union { position:absolute; top:12px; height:2px; background:var(--marino-2); opacity:.35; }
+.conv .prom { text-align:right; font-family:var(--serif); font-size:1.05rem; color:var(--marino); }
+.leyenda { display:flex; gap:1.2rem; font-size:.8rem; color:var(--suave); margin-top:.6rem; flex-wrap:wrap; }
+.leyenda span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:.35rem; }
+.leyenda .l1::before { background:var(--oro); } .leyenda .l2::before { background:var(--marino-2); }
+.lectura { background:var(--pizarra-f); border-radius:10px; padding:.8rem 1rem; margin-top:1rem; font-size:.92rem; }
+.lectura b { color:var(--marino); }
+/* confianza */
+.medidor { display:flex; align-items:center; gap:.7rem; margin:.4rem 0 .8rem; }
+.medidor .nivel { font-family:var(--serif); font-size:1.3rem; color:var(--marino); }
+ul.limpio { margin:.3rem 0 0; padding-left:1.1rem; font-size:.9rem; } ul.limpio li { margin:.25rem 0; }
+/* rutas */
+.ruta h3 { font-size:1.1rem; } .ruta .perfil { font-size:.86rem; color:var(--suave); margin:.2rem 0 .6rem; }
+.ruta h4 { margin:.7rem 0 .15rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--suave); }
+.ruta.principal { border-top:4px solid var(--oro); }
+.preguntas-tutor { background:var(--marino); color:#fff; border-radius:14px; padding:1.1rem 1.3rem; }
+.preguntas-tutor h3 { color:#fff; font-size:1.05rem; } .preguntas-tutor li { margin:.35rem 0; }
+.acciones { display:flex; gap:.7rem; margin-top:1.2rem; flex-wrap:wrap; }
+.btn { font:inherit; font-weight:700; padding:.7rem 1.3rem; border-radius:10px; border:1px solid var(--marino); background:var(--marino); color:#fff; cursor:pointer; }
+.btn.sec { background:#fff; color:var(--marino); }
+/* docente */
+.kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:.8rem; }
+@media (max-width:680px) { .kpis { grid-template-columns:repeat(2,1fr); } }
+.kpi { background:var(--papel); border:1px solid var(--linea); border-radius:12px; padding:.8rem 1rem; }
+.kpi .v { font-family:var(--serif); font-size:1.9rem; color:var(--marino); line-height:1.1; } .kpi .t { font-size:.78rem; color:var(--suave); }
+.hbar { display:grid; grid-template-columns:9rem 1fr 2.6rem; gap:.7rem; align-items:center; padding:.3rem 0; font-size:.9rem; }
+@media (max-width:680px) { .hbar { grid-template-columns:6.5rem 1fr 2.2rem; } }
+.hbar .barra { height:16px; margin:0; }
+table.mapa { width:100%; border-collapse:separate; border-spacing:3px; font-size:.82rem; }
+table.mapa th { font-weight:600; color:var(--suave); text-align:center; padding:.2rem; }
+table.mapa td.n { text-align:left; font-weight:600; color:var(--marino); padding-right:.5rem; white-space:nowrap; }
+table.mapa td { text-align:center; padding:.5rem .2rem; border-radius:6px; font-weight:700; }
+
+.cab { text-align:center; background:#EEF4FF; border-color:#C9D8F2; margin-top:1rem; }
+.cab h1 { font-size:clamp(1.5rem,5vw,2.1rem); color:#1B3A8C; font-weight:700; font-family:var(--sans); }
+.cab .datos { font-weight:600; color:var(--pizarra); margin-top:.3rem; font-size:.92rem; } .cab .folio { color:var(--suave); font-size:.8rem; }
+.alcance { text-align:left; background:#FFF9E0; border-left:4px solid var(--oro); color:#7A4B00; padding:.8rem 1rem; border-radius:4px; margin-top:.9rem; font-size:.85rem; }
+.resumen { border:2px solid #BFD6F5; }
+.r4 { display:grid; grid-template-columns:1fr 1fr; gap:1.1rem 1.6rem; }
+@media (max-width:680px) { .r4 { grid-template-columns:1fr; } }
+.et { font-size:.82rem; color:var(--suave); } .gr { font-weight:700; font-size:1.15rem; color:var(--marino); }
+.gr.az { color:#2563EB; }
+.comp { display:flex; align-items:center; gap:.5rem; font-size:.9rem; margin:.15rem 0; } .comp b { color:var(--marino); }
+.confianza { display:flex; gap:.8rem; align-items:flex-start; border-top:1px solid var(--linea); margin-top:1rem; padding-top:.8rem; font-size:.9rem; }
+.nota { background:#EAF2FF; border:1px solid #BFD6F5; color:#14307A; border-radius:8px; padding:.6rem .9rem; margin-top:1rem; font-size:.86rem; }
+.graf h3 { font-family:var(--sans); font-size:1.02rem; text-align:center; margin-bottom:.4rem; }
+.pie { background:#F6F8FC; border:1px solid var(--linea); border-radius:10px; padding:.7rem .9rem; margin-top:.7rem; font-size:.86rem; }
+.diag h3 { font-family:var(--sans); font-size:1.05rem; } .diag p { margin:.3rem 0 .6rem; font-size:.93rem; }
+.diag h4 { margin:.9rem 0 .2rem; font-size:1rem; font-family:var(--sans); } .diag h4.verde { color:#17803F; } .diag h4.naranja { color:#E0560A; }
+.diag ul { margin:.2rem 0; padding-left:1.1rem; font-size:.92rem; } .diag li { margin:.25rem 0; }
+
+.citas { display:grid; gap:.9rem; }
+.citas blockquote { margin:0; position:relative; background:var(--marino); color:#fff; border-radius:14px; padding:1.5rem 2.6rem; text-align:center; border:1px solid #3a4f8f; box-shadow:inset 0 0 0 4px rgba(229,179,0,.0), 0 0 0 1px rgba(229,179,0,.25); }
+.citas blockquote p { margin:0; font-family:var(--serif); font-size:clamp(1.02rem,3.4vw,1.3rem); line-height:1.4; text-wrap:balance; }
+.citas blockquote::before, .citas blockquote::after { position:absolute; font-family:var(--serif); font-size:4rem; line-height:1; color:var(--oro); opacity:.55; }
+.citas blockquote::before { content:"\201C"; left:.7rem; top:.2rem; }
+.citas blockquote::after { content:"\201D"; right:.7rem; bottom:-.8rem; }
+.cierre { text-align:center; margin:2.4rem auto 0; max-width:36em; padding-top:1.4rem; border-top:3px solid var(--oro); }
+.cierre h2 { font-size:clamp(1.4rem,5vw,1.9rem); line-height:1.2; margin:0 0 .6rem; text-wrap:balance; }
+.cierre p { font-size:1.05rem; color:var(--suave); margin:0; text-wrap:balance; }
+.oculto { display:none; }
+footer { margin-top:2.5rem; font-size:.8rem; color:var(--suave); text-align:center; }
+</style>
+</head>
+<body>
+<main>
+  <div class="marca">
+    <img src="../static/logo_fca.png" alt="FCA">
+    <div class="inst">Universidad Autónoma «Benito Juárez» de Oaxaca<small>Facultad de Contaduría y Administración</small></div>
+    <img src="../static/logo_uabjo.png" alt="UABJO">
+  </div>
+
+  <div class="vista" role="group" aria-label="Vista">
+    <button id="bAlumno" aria-pressed="true">Vista del alumno</button>
+    <button id="bDocente" aria-pressed="false">Vista del docente (grupo)</button>
+  </div>
+  <div class="aviso-proto">Prototipo con <b>datos de ejemplo</b>. No usa la base de datos ni el código de la app.</div>
+
+  <!-- ============ ALUMNO ============ -->
+  <section id="alumno">
+    <div class="card cab">
+      <h1>Reporte de Evaluación Integral</h1>
+      <div class="datos">ALUMNO DE EJEMPLO · Mat: 201234 · Semestre: 5 · Tutor: EIRA</div>
+      <div class="folio">Folio: UABJO-30584 · Fecha: 3/11/2026</div>
+      <div class="alcance"><b>Alcance del instrumento:</b> Los resultados de esta evaluación tienen fines exclusivamente educativos y orientativos. No constituyen un diagnóstico psicológico, clínico, laboral o médico, ni sustituyen la valoración realizada por profesionales especializados. La elección de un campo formativo debe considerar, además de estos resultados, los intereses, experiencias, habilidades, circunstancias personales y objetivos académicos del estudiante. Se recomienda revisar el reporte con el tutor u orientador correspondiente.</div>
+    </div>
+
+    <h2>Resumen de convergencia</h2>
+    <p class="sub">Une los dos tests: quién eres (Test 1) y lo que ya sabes hacer (Test 2).</p>
+    <div class="card resumen">
+      <div class="r4">
+        <div><div class="et">Perfil vocacional dominante</div><div class="gr" id="rDom"></div><div class="et" id="rDomPts"></div></div>
+        <div><div class="et">Campo formativo complementario</div><div class="gr" id="rCom"></div><div class="et" id="rComPts"></div></div>
+        <div><div class="et">Estructura Big Five requerida vs. obtenida</div><div id="rOcean"></div></div>
+        <div><div class="et">Índice de alineación</div><div class="gr az" id="rAli"></div><div class="et" id="rAliTxt"></div></div>
+      </div>
+      <div class="confianza"><span class="chip" id="confChip"></span><div id="confTxt"></div></div>
+    </div>
+    <div class="nota" id="nota"></div>
+
+    <div style="margin-top:1.2rem;max-width:520px;margin-inline:auto">
+      <div class="card graf"><h3>Resultados Big Five (OCEAN)</h3><svg id="radar" viewBox="0 0 320 290" width="100%" role="img" aria-label="Radar de las cinco dimensiones"></svg></div>
+      <div class="pie" id="pieOcean"></div>
+    </div>
+
+    <h2>Cómo se ven tus rasgos</h2>
+    <p class="sub">Test 1. No hay rasgos buenos ni malos: describen cómo sueles desempeñarte.</p>
+    <div class="card" id="dims"></div>
+
+    <h2>Orientación por campo formativo</h2>
+    <p class="sub">Test 2. Cuánta autonomía muestras en las actividades de cada especialidad (máximo 20 puntos).</p>
+    <div style="max-width:520px;margin-inline:auto">
+      <div class="card graf"><svg id="barras" viewBox="0 0 340 290" width="100%" role="img" aria-label="Puntaje por campo formativo"></svg></div>
+      <div class="pie" id="pieBarras"></div>
+    </div>
+
+    <h2>Dónde coinciden tus dos tests</h2>
+    <p class="sub">Cada fila compara tu personalidad (●) con tus competencias actuales (●). Si están cerca, la señal es más sólida.</p>
+    <div class="card">
+      <div id="conv"></div>
+      <div class="leyenda"><span class="l1">Test 1 · afinidad por personalidad</span><span class="l2">Test 2 · competencias actuales</span></div>
+      <div class="lectura" id="lectura"></div>
+    </div>
+
+    <h2>Diagnóstico orientativo del campo formativo</h2>
+    <div class="card diag">
+      <h3>Análisis de afinidad y competencias</h3>
+      <p id="dAnalisis"></p>
+      <h4 class="verde">Fortalezas proyectadas</h4><ul id="dFort"></ul>
+      <h4 class="naranja">Áreas de desarrollo sugeridas</h4><ul id="dDes"></ul>
+    </div>
+
+    <h2>Tus rutas para explorar</h2>
+    <p class="sub">Dos caminos con sentido para ti y una tercera opción para ampliar horizontes.</p>
+    <div class="grid2" id="rutas"></div>
+
+    <div class="cierre">
+      <h2>El desafío de la elección: más allá del interés</h2>
+      <p>Confía en lo que descubriste sobre ti. Esta elección es el primer paso para construir un futuro que te inspire.</p>
+    </div>
+    <div class="acciones"><button class="btn">Descargar PDF</button><button class="btn sec">Descargar Excel</button></div>
+  </section>
+
+  <!-- ============ DOCENTE ============ -->
+  <section id="docente" class="oculto">
+    <h2 style="margin-top:1.6rem">Panorama del grupo</h2>
+    <p class="sub">Resumen de quienes ya terminaron ambos tests.</p>
+    <div class="kpis" id="kpis"></div>
+
+    <h2>Primera opción por especialidad</h2>
+    <p class="sub">Según el promedio de ambos tests.</p>
+    <div class="card" id="distribucion"></div>
+
+    <h2>Coinciden o no los dos tests</h2>
+    <p class="sub">Si la 1ª opción del Test 1 y la del Test 2 son la misma especialidad.</p>
+    <div class="card" id="coincidencia"></div>
+
+    <h2>Alumnos que piden atención</h2>
+    <p class="sub">Casos donde conviene una conversación individual antes de entregar resultados.</p>
+    <div class="card"><ul class="limpio" id="atencion"></ul></div>
+
+    <h2>Mapa de calor: quién apunta a qué</h2>
+    <p class="sub">Promedio de ambos tests por alumno (muestra de 8). Más oscuro = mayor afinidad.</p>
+    <div class="card" style="overflow-x:auto"><table class="mapa" id="mapa"></table></div>
+  </section>
+
+  <footer>Prototipo · docs/prototipo_resultados.html</footer>
+</main>
+
+<script>
+/* ---------- datos de ejemplo (misma estructura que modules/scoring.py) ---------- */
+const BIG5 = [
+  {c:'APERTURA', n:'Apertura', p:.60, t:'Curiosidad, creatividad y gusto por lo nuevo.'},
+  {c:'RESPONSABILIDAD', n:'Responsabilidad', p:.80, t:'Orden, constancia y cumplimiento. Sueles terminar lo que empiezas.'},
+  {c:'EXTRAVERSION', n:'Extraversión', p:.50, t:'Energía en lo social. Rindes mejor en espacios más tranquilos o de grupos pequeños.'},
+  {c:'AMABILIDAD', n:'Amabilidad', p:.60, t:'Cooperación y empatía; equilibras tus intereses con los del grupo.'},
+  {c:'ESTABILIDAD', n:'Estabilidad emocional', p:.60, t:'Manejo de la presión. Refleja tu resiliencia y objetividad cuando hay tensión.'}
+];
+const B = Object.fromEntries(BIG5.map(d=>[d.c,d]));
+const nivelB5 = p => p>=.72 ? ['Alto','alto'] : p>=.56 ? ['Medio','medio'] : ['Área de desarrollo','bajo'];
+// pts = puntos del Test 2 (máx. 20); t1 = afinidad del Test 1 (promedio de sus componentes Big Five)
+const ESP = [
+  {c:'MKT', n:'Mercadotecnia', pts:12, comp:['APERTURA','EXTRAVERSION'], req:null,
+   desc:'Creatividad, visión de mercado, dinamismo social y comunicación persuasiva.', perfil:'Persuasión, orientación a metas y comunicación fluida.',
+   hacer:['Diseñar una mini campaña para un negocio local','Probar herramientas de analítica de redes sociales']},
+  {c:'CH', n:'Capital Humano', pts:10, comp:['AMABILIDAD','EXTRAVERSION'], req:null,
+   desc:'Gestión del talento, empatía organizacional, mediación y liderazgo de equipos.', perfil:'Paciencia, empatía y mediación interpersonal.',
+   hacer:['Facilitar una dinámica de equipo']},
+  {c:'AF', n:'Administración Financiera', pts:20, comp:['RESPONSABILIDAD','ESTABILIDAD'], req:null,
+   desc:'Rigor cuantitativo, control de riesgos, disciplina y toma de decisiones bajo presión.', perfil:'Rigor analítico, precisión matemática y apego a normas.',
+   hacer:['Armar un presupuesto personal de un semestre','Practicar hoja de cálculo con un caso de costos']},
+  {c:'NI', n:'Negocios Internacionales', pts:14, comp:['APERTURA','ESTABILIDAD','EXTRAVERSION'], req:'inglés de nivel B1 o equivalente',
+   desc:'Inteligencia cultural, adaptabilidad global, resiliencia y capacidad de negociación.', perfil:'Flexibilidad comunicativa, empuje y visión estratégica global.',
+   hacer:['Simular una exportación: documentos, costos y tipo de cambio','Practicar inglés con enfoque de negocios']},
+  {c:'EMP', n:'Emprendimiento', pts:7, comp:['APERTURA','RESPONSABILIDAD','ESTABILIDAD'], req:null,
+   desc:'Visión de oportunidad, autodisciplina ejecutiva, resiliencia y tolerancia al riesgo.', perfil:'Tolerancia al riesgo, iniciativa y liderazgo motivacional.',
+   hacer:['Validar una idea con 10 clientes potenciales']}
+].map(e => { const t1 = e.comp.reduce((a,c)=>a+B[c].p,0)/e.comp.length, t2 = e.pts/20;
+  return {...e, t1, t2, prom:(t1+t2)/2}; });
+const ORDEN = [...ESP].sort((a,b)=>b.prom-a.prom);
+const pct = x => Math.round(x*100)+'%';
+const $ = id => document.getElementById(id);
+
+/* ---------- derivados (la "interpretación") ---------- */
+const [e1,e2,e3] = ORDEN;
+const brecha = e1.prom - e2.prom, empate = brecha <= .05;
+const top1 = [...ESP].sort((a,b)=>b.t1-a.t1)[0], top2 = [...ESP].sort((a,b)=>b.t2-a.t2)[0];
+const coinciden = top1.c === top2.c;
+const distancia = e => Math.abs(e.t1-e.t2);
+const masFirme = [...ESP].sort((a,b)=>distancia(a)-distancia(b))[0];
+const masBrecha = [...ESP].sort((a,b)=>distancia(b)-distancia(a))[0];
+// alineación: qué parte de los rasgos que pide la especialidad están en nivel Alto (>= 72 %)
+const altos = e => e.comp.filter(c=>B[c].p>=.72), medios = e => e.comp.filter(c=>B[c].p<.72);
+const alineacion = e => altos(e).length / e.comp.length;
+const etiquetaAli = a => a>=.75 ? 'Alineación alta' : a>=.5 ? 'Alineación moderada' : 'Alineación baja';
+const lista = a => a.length<=1 ? a.join('') : a.slice(0,-1).join(', ')+' y '+a[a.length-1];
+const nomB = c => B[c].n.toLowerCase();
+
+/* ---------- resumen de convergencia ---------- */
+$('rDom').textContent = e1.n; $('rDomPts').textContent = `${e1.pts} / 20 pts en el Test 2 · ${pct(e1.prom)} promedio`;
+$('rCom').textContent = e2.n; $('rComPts').textContent = `${e2.pts} / 20 pts en el Test 2 · ${pct(e2.prom)} promedio`;
+$('rOcean').innerHTML = e1.comp.map(c=>{ const [lab,cls]=nivelB5(B[c].p);
+  return `<div class="comp"><b>${B[c].n}</b> ${pct(B[c].p)} <span class="chip ${cls}">${lab}</span></div>`; }).join('');
+const ali = alineacion(e1);
+$('rAli').textContent = `${pct(ali)} · ${etiquetaAli(ali).replace('Alineación ','Alineación ')}`;
+$('rAliTxt').textContent = `${altos(e1).length} de ${e1.comp.length} rasgos requeridos están en nivel Alto.`;
+const margen = Math.round(brecha*100), nivelConf = empate ? 'moderada' : margen>=15 ? 'alta' : 'buena';
+$('confChip').textContent = 'Confianza ' + nivelConf; $('confChip').className = 'chip ' + (empate?'medio':'alto');
+$('confTxt').innerHTML = `${empate?'Empate técnico':'Margen de '+margen+' puntos'} entre ${e1.n} y ${e2.n}. `
+  + (coinciden ? 'Tus dos tests coinciden en la primera opción.' : 'Tus dos tests no coinciden en la primera opción.');
+$('nota').innerHTML = e2.req
+  ? `<b>Nota:</b> se recomienda fortalecer el nivel de inglés, ya que para ${e2.n} se requiere un dominio mínimo de B1 o equivalente.`
+  : `<b>Nota:</b> tu campo complementario, ${e2.n}, comparte rasgos con tu primera opción; explóralo antes de descartarlo.`;
+
+/* ---------- radar ---------- */
+(function(){
+  const cx=160, cy=145, R=95, n=BIG5.length; let s='';
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n; return [cx+r*Math.cos(a), cy+r*Math.sin(a)];};
+  [.25,.5,.75,1].forEach(k=>{ s+=`<polygon points="${BIG5.map((_,i)=>pt(i,R*k).join(',')).join(' ')}" fill="none" stroke="#D6DDEB"/>`; });
+  BIG5.forEach((_,i)=>{ const [x,y]=pt(i,R); s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#D6DDEB"/>`; });
+  s+=`<polygon points="${BIG5.map((d,i)=>pt(i,R*d.p).join(',')).join(' ')}" fill="rgba(37,99,235,.2)" stroke="#2552D0" stroke-width="2.5"/>`;
+  BIG5.forEach((d,i)=>{ const [x,y]=pt(i,R*d.p); s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="#fff" stroke="#2552D0" stroke-width="2"/>`; });
+  BIG5.forEach((d,i)=>{ const [x,y]=pt(i,R+26); s+=`<text x="${x}" y="${y-2}" text-anchor="middle" font-size="11" font-weight="600" fill="#0F1E4A">${d.n.split(' ')[0]}</text><text x="${x}" y="${y+11}" text-anchor="middle" font-size="11" font-weight="700" fill="#2552D0">${pct(d.p)}</text>`; });
+  $('radar').innerHTML = s;
+})();
+const altosB = BIG5.filter(d=>d.p>=.72).map(d=>d.n.toLowerCase());
+$('pieOcean').innerHTML = `Tus factores más altos son fortalezas conductuales${altosB.length?': <b>'+lista(altosB)+'</b>':''}. Tu <b>${[...BIG5].sort((a,b)=>a.p-b.p)[0].n.toLowerCase()}</b> es el rasgo con más espacio para crecer. Tu estabilidad emocional refleja tu resiliencia y objetividad bajo presión.`;
+
+/* ---------- barras Test 2 ---------- */
+(function(){
+  const x0=34, w=300, h=190, y0=20, n=ESP.length, bw=w/n*.62; let s='';
+  [0,5,10,15,20].forEach(v=>{ const y=y0+h-(v/20)*h; s+=`<line x1="${x0}" y1="${y}" x2="${x0+w}" y2="${y}" stroke="#E1E6F0"/><text x="${x0-6}" y="${y+4}" text-anchor="end" font-size="10" fill="#5A6788">${v}</text>`; });
+  ESP.forEach((e,i)=>{ const cx=x0+w/n*(i+.5), bh=(e.pts/20)*h, y=y0+h-bh, dom=e.c===e1.c;
+    s+=`<rect x="${cx-bw/2}" y="${y}" width="${bw}" height="${bh}" rx="3" fill="${dom?'#2FB35F':'#A9B4CE'}"/>
+        <text x="${cx}" y="${y-5}" text-anchor="middle" font-size="11" font-weight="700" fill="#1E2A4A">${e.pts} pts</text>
+        <text transform="translate(${cx+4},${y0+h+12}) rotate(-28)" text-anchor="end" font-size="10" fill="#5A6788">${e.n}</text>`; });
+  $('barras').innerHTML = s;
+})();
+$('pieBarras').innerHTML = `Puntajes altos (16–20) sugieren alta autonomía en esas tareas; los medios (10–15), práctica en desarrollo. <b>${e1.n}</b> lleva ${e1.pts} de 20. Es una guía orientativa, no determinista.`;
+
+/* ---------- rasgos ---------- */
+$('dims').innerHTML = BIG5.map(d=>{ const [lab,cls]=nivelB5(d.p);
+  return `<div class="dim"><div class="fila"><b>${d.n}</b><span class="num">${pct(d.p)} <span class="chip ${cls}">${lab}</span></span></div>
+  <div class="barra"><i style="width:${d.p*100}%"></i></div><p>${d.t}</p></div>`; }).join('');
+
+/* ---------- convergencia ---------- */
+$('conv').innerHTML = ORDEN.map(e=>{
+  const a=Math.min(e.t1,e.t2)*100, b=Math.max(e.t1,e.t2)*100;
+  return `<div class="conv"><span class="nombre">${e.n}</span>
+   <div class="pista"><span class="union" style="left:${a}%;width:${b-a}%"></span>
+     <span class="punto t1" style="left:${e.t1*100}%" title="Test 1: ${pct(e.t1)}"></span>
+     <span class="punto t2" style="left:${e.t2*100}%" title="Test 2: ${pct(e.t2)}"></span></div>
+   <span class="prom">${pct(e.prom)}</span></div>`; }).join('');
+$('lectura').innerHTML = coinciden
+  ? `<b>Tus dos tests apuntan a ${top1.n}.</b> Es la señal más sólida que dan estos instrumentos. La mayor distancia entre tests está en <b>${masBrecha.n}</b> (${Math.round(distancia(masBrecha)*100)} pts): ahí tu forma de ser y tus competencias actuales cuentan historias distintas.`
+  : `<b>Tus tests no apuntan a la misma especialidad.</b> Por personalidad destaca <b>${top1.n}</b> y por competencias actuales <b>${top2.n}</b>. No es una contradicción: tu forma de ser encaja con una y ya practicaste más la otra.`;
+
+/* ---------- diagnóstico orientativo ---------- */
+const dif = e1.pts - e2.pts;
+$('dAnalisis').textContent = `El resultado sugiere afinidad con ${e1.n}. La diferencia con el segundo campo (${e2.n}) es de ${dif} puntos en el Test 2. `
+  + `Las competencias asociadas incluyen: ${e1.desc.charAt(0).toLowerCase()+e1.desc.slice(1).replace(/\.$/,'')}. `
+  + `Su alineación con tus rasgos conductuales es ${etiquetaAli(ali).replace('Alineación ','')}: ${altos(e1).length} de ${e1.comp.length} rasgos que pide la especialidad están en nivel Alto.`;
+$('dFort').innerHTML = (altos(e1).length ? altos(e1).map(c=>`<li>Tu <b>${nomB(c)}</b> (${pct(B[c].p)}) es una fortaleza para este campo.</li>`).join('')
+  : '<li>Ninguno de los rasgos requeridos está en nivel Alto todavía.</li>')
+  + `<li>En el Test 2 muestras ${e1.pts>=16?'alta autonomía':'práctica en desarrollo'} en ${e1.n} (${e1.pts}/20).</li>`;
+$('dDes').innerHTML = medios(e1).length
+  ? medios(e1).map(c=>`<li>Fortalecer <b>${nomB(c)}</b> (${pct(B[c].p)}): talleres, prácticas supervisadas o proyectos con retroalimentación.</li>`).join('')
+  : '<li>Tus rasgos requeridos están todos en nivel Alto; el reto es mantenerlos con práctica.</li>';
+
+/* ---------- rutas y preguntas ---------- */
+const ruta = (e,tag,cls) => `<div class="card ruta ${cls}"><span class="chip ${cls==='principal'?'alto':'bajo'}">${tag}</span>
+  <h3>${e.n} · ${pct(e.prom)}</h3><div class="perfil">${e.perfil}</div><p style="margin:0;font-size:.9rem">${e.desc}</p>
+  <h4>Pruébalo esta semana</h4><ul class="limpio">${e.hacer.map(h=>`<li>${h}</li>`).join('')}</ul></div>`;
+$('rutas').innerHTML = ruta(e1, empate?'Opción A':'1ª opción','principal') + ruta(e2, empate?'Opción B':'2ª opción','secundaria')
+  + `<div class="card ruta" style="grid-column:1/-1"><span class="chip bajo">Para explorar</span><h3>${e3.n} · ${pct(e3.prom)}</h3>
+     <p style="margin:.3rem 0 0;font-size:.9rem">Queda a ${Math.round((e2.prom-e3.prom)*100)} puntos de tu segunda opción. Si ninguna te convence, revísala antes de descartarla.</p></div>`;
+
+
+/* ---------- docente ---------- */
+const ALUMNOS = [
+  ['Ana Pérez','201234','MKT','NI',.79,.77,0], ['Luis Ramírez','201301','AF','AF',.84,.80,0],
+  ['María Cruz','201118','CH','CH',.78,.71,0], ['Jorge Santos','201422','EMP','NI',.74,.72,1],
+  ['Daniela Ruiz','201260','MKT','MKT',.82,.76,0], ['Pablo Vargas','201377','NI','EMP',.73,.71,0],
+  ['Sofía Mendoza','201199','CH','CH',.80,.74,0], ['Iván Torres','201455','AF','CH',.70,.69,2]
+];
+const nombreEsp = c => ({MKT:'Mercadotecnia',CH:'Capital Humano',AF:'Administración Financiera',NI:'Negocios Internacionales',EMP:'Emprendimiento'})[c];
+const total = 31, terminaron = 27;
+$('kpis').innerHTML = [[total,'Registrados'],[terminaron,'Terminaron ambos'],['63%','Tests que coinciden'],['5','Con empate técnico']]
+  .map(([v,t])=>`<div class="kpi"><div class="v">${v}</div><div class="t">${t}</div></div>`).join('');
+const dist = [['Mercadotecnia',8],['Capital Humano',6],['Administración Financiera',6],['Negocios Internacionales',4],['Emprendimiento',3]];
+$('distribucion').innerHTML = dist.map(([n,v])=>`<div class="hbar"><span>${n}</span><div class="barra oro"><i style="width:${v/8*100}%"></i></div><b>${v}</b></div>`).join('');
+$('coincidencia').innerHTML = [['Coinciden en 1ª opción',17,'alto'],['Coinciden en alguna de las dos primeras',6,'medio'],['No coinciden',4,'bajo']]
+  .map(([n,v,c])=>`<div class="hbar"><span>${n}</span><div class="barra"><i style="width:${v/27*100}%"></i></div><b>${v}</b></div>`).join('');
+$('atencion').innerHTML = [
+  '<b>5 alumnos</b> con empate técnico entre sus dos primeras opciones.',
+  '<b>4 alumnos</b> cuyos dos tests apuntan a especialidades distintas.',
+  '<b>2 alumnos</b> con «Sin experiencia» en 2 o más reactivos de una especialidad (piden explorarla).',
+  '<b>1 alumno</b> con estabilidad emocional en «Área de desarrollo»: conviene un acompañamiento más cercano.'
+].map(t=>`<li>${t}</li>`).join('');
+const col = p => { const a = Math.max(0,Math.min(1,(p-.5)/.35)); return `rgba(15,30,74,${.08+a*.82})`; };
+$('mapa').innerHTML = `<tr><th></th>${['MKT','CH','AF','NI','EMP'].map(c=>`<th>${c}</th>`).join('')}</tr>` +
+  ALUMNOS.map(([n,m,a,b,pa,pb])=>{
+    const base = {MKT:.55,CH:.55,AF:.55,NI:.55,EMP:.55};
+    base[a]=pa; base[b]=Math.max(base[b],pb);
+    // variación determinista para que el mapa no sea plano
+    let k=+m.slice(-2); Object.keys(base).forEach((c,i)=>{ if(c!==a&&c!==b) base[c] = .52 + ((k*(i+3))%22)/100; });
+    return `<tr><td class="n">${n}</td>${['MKT','CH','AF','NI','EMP'].map(c=>{const v=base[c]; return `<td style="background:${col(v)};color:${v>.66?'#fff':'#0F1E4A'}">${Math.round(v*100)}</td>`}).join('')}</tr>`; }).join('');
+
+/* ---------- alternar vista ---------- */
+function vista(v){ $('alumno').classList.toggle('oculto', v!=='alumno'); $('docente').classList.toggle('oculto', v!=='docente');
+  $('bAlumno').setAttribute('aria-pressed', v==='alumno'); $('bDocente').setAttribute('aria-pressed', v==='docente'); }
+$('bAlumno').onclick = () => vista('alumno'); $('bDocente').onclick = () => vista('docente');
+</script>
+</body>
+</html>

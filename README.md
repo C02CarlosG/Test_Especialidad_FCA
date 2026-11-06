@@ -34,8 +34,13 @@ Hecha con [Streamlit](https://streamlit.io) y [Supabase](https://supabase.com) (
 
 ## Reglas importantes
 
-- **No hay lista de matrículas autorizadas:** entra cualquier matrícula de 6 dígitos, y quien tenga el QR puede
-  registrarse. Si en el piloto aparecen matrículas desconocidas, el siguiente paso es agregar esa lista.
+- **El acceso está limitado a una lista de matrículas autorizadas** (tabla `alumnos_autorizados`, 5.º semestre).
+  Quien tenga el QR pero no esté en la lista no entra, y cada intento cuenta como fallido. Para cargarla:
+  ejecuta [`sql/04_alumnos_autorizados.sql`](sql/04_alumnos_autorizados.sql) en Supabase y luego
+  `python scripts/importar_alumnos_autorizados.py "ALUMNOS DE 5o. SEMESTRE Licenciatura.md"` (agrega
+  `--reemplazar` para quitar a quienes ya no estén en el archivo). Hay dos accesos de prueba, `000001` y `000002`
+  (estatus `PRUEBA`), que `--reemplazar` conserva; al escribir la matrícula, el registro llena solo el nombre y el semestre. El archivo tiene nombres y matrículas, por eso
+  está en `.gitignore`: no lo subas al repositorio.
 - Una matrícula se registra **una sola vez**. Si sigue «en curso», se reanuda con la misma matrícula y el mismo
   nombre; con otro nombre se rechaza y cuenta como intento fallido (5 por matrícula y 100 por equipo cada 15 min).
 - «Sin experiencia» (SE, solo en el Test 2) es un dato faltante: no suma ni cuenta como 0.
@@ -70,7 +75,6 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 | `[supabase]` | `service_role_key` | Clave de servidor (Settings → API). **Nunca** en el navegador ni en el repositorio |
 | `[admin]` | `password` | Contraseña del panel `/admin`: mínimo 12 caracteres, larga y única |
 | `[app]` | `public_url` | URL pública de la app (la que lleva el QR) |
-| `[app]` | `carrera` | `administracion` (por defecto) o `contaduria`: elige los tests de `config/tests` o `config/contaduria/tests` y el subtítulo |
 | `[app]` | `MOSTRAR_RESULTADO_AL_ALUMNO` | `true` (por defecto): el alumno ve y descarga sus resultados; `false`: solo el docente |
 
 **3. Correr la app y las pruebas.**
@@ -82,26 +86,9 @@ python3 -m pytest -q        # unas 500 pruebas; no necesitan Supabase
 
 Algunas pruebas usan herramientas opcionales (`pdftotext`, `pdfimages`, `zbarimg`) y se omiten si no están.
 
-## Dos carreras, un mismo código
-
-El código es el mismo para **Administración** y **Contaduría Pública**; cambian los tests y la base de datos:
-
-| | Administración | Contaduría Pública |
-|---|---|---|
-| `[app] carrera` | `administracion` (o vacío) | `contaduria` |
-| Tests | [`config/tests/`](config/tests) | [`config/contaduria/tests/`](config/contaduria/tests) |
-| Campos | Mercadotecnia, Capital Humano, Adm. Financiera, Negocios Int., Emprendimiento | Contabilidades Esp., Auditorías Esp., Derecho Fiscal, Adm. Financiera |
-| Base de datos | su proyecto de Supabase | **otro proyecto de Supabase**, con los mismos scripts de `sql/` |
-
-Para publicar Contaduría: crea un proyecto nuevo en Supabase y ejecuta `sql/01_esquema.sql` y `sql/02_rls.sql` (el
-`03` ya viene incluido en el `01`); crea una segunda app en Streamlit Cloud con el mismo repositorio y rama, y en sus
-Secrets pon las claves del proyecto nuevo, otra contraseña de `/admin`, su `public_url` y `carrera = "contaduria"`.
-Las calculadoras de Contaduría están en [`docs/referencia_contaduria/`](docs/referencia_contaduria) y
-[`scripts/convertir_tests_contaduria.py`](scripts/convertir_tests_contaduria.py) las convierte.
-
 ## Los tests (archivos Excel)
 
-Cada test es un `.xlsx` en la carpeta de la carrera (p. ej. [`config/tests/`](config/tests)). El alumno los contesta en el **orden alfabético** del
+Cada test es un `.xlsx` en [`config/tests/`](config/tests). El alumno los contesta en el **orden alfabético** del
 nombre de archivo, que además es el id del test (minúsculas, números, `_` o `-`, hasta 40 caracteres).
 
 | Hoja | Columnas | |
@@ -216,7 +203,7 @@ views/                  pantallas: alumno.py, test.py, informe.py (hoja de resul
 modules/                lógica: acceso, avance, scoring, interpretacion, graficas, panel, reports, reports_admin, admin_auth,
                         security, qr_utils, config_loader, db (única capa que habla con Supabase)
 config/                 aviso_privacidad.md y tests/*.xlsx
-sql/                    01_esquema.sql y 02_rls.sql
+sql/                    01_esquema.sql, 02_rls.sql, 03_semestre.sql y 04_alumnos_autorizados.sql
 static/                 logos y tipografías, servidos con enableStaticServing
 scripts/                conversión de las calculadoras y generación de los casos de verificación
 tests/                  pruebas automáticas (golden/ = casos calculados con las hojas de Excel)

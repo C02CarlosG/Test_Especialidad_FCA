@@ -32,10 +32,11 @@ def _nuevo():
 
 
 def _llenar(at, matricula="123456", edad=20, acepto=True, nombres="Ana María", semestre=5):
-    at.text_input[0].input("Pérez")
-    at.text_input[1].input("López")
-    at.text_input[2].input(nombres)
-    at.text_input[3].input(matricula)
+    # La matrícula (text_input[0]) llena los demás campos al escribirse: primero se corre, luego se corrigen.
+    at.text_input[0].input(matricula).run()
+    at.text_input[1].input("Pérez")
+    at.text_input[2].input("López")
+    at.text_input[3].input(nombres)
     at.selectbox[0].set_value(semestre)
     at.number_input[0].set_value(edad)
     at.text_input[4].input("Mtro. Ruiz")  # text_input[5] es la fecha (deshabilitada)
@@ -190,10 +191,11 @@ def test_el_semestre_es_un_desplegable_del_primero_al_octavo():
 
 def test_sin_semestre_no_registra():
     at = _nuevo()
-    at.text_input[0].input("Pérez")
-    at.text_input[1].input("López")
-    at.text_input[2].input("Ana")
-    at.text_input[3].input("123456")
+    at.text_input[0].input("123456").run()
+    at.text_input[1].input("Pérez")
+    at.text_input[2].input("López")
+    at.text_input[3].input("Ana")
+    at.selectbox[0].set_value(None)  # la matrícula de la lista ya había puesto el 5.º
     at.number_input[0].set_value(20)
     at.text_input[4].input("Mtro. Ruiz")
     at.checkbox[0].check()
@@ -204,3 +206,35 @@ def test_sin_semestre_no_registra():
 def test_el_semestre_elegido_se_guarda_con_el_alumno():
     at = _llenar(_nuevo(), semestre=8)
     assert at.session_state["alumno"].semestre == 8
+
+
+def _app_con_lista():
+    import streamlit as st
+    from fakes import FakeRepo, crear_test
+    from views import alumno
+
+    if "repo" not in st.session_state:
+        st.session_state["repo"] = FakeRepo(autorizadas={"177195": "AGUILAR VELASCO ALANN JOSUE"})
+    alumno.render(st.session_state["repo"], (crear_test("t1", 10),), "Aviso", "203.0.113.9")
+
+
+def test_al_escribir_la_matricula_se_cargan_los_datos_de_la_lista():
+    at = AppTest.from_function(_app_con_lista, default_timeout=30).run()
+    at.text_input[0].input("177195").run()
+    assert [t.value for t in at.text_input[1:4]] == ["Aguilar", "Velasco", "Alann Josue"]
+    assert at.selectbox[0].value == 5
+    assert at.success and "Cargamos tus datos" in at.success[0].value
+
+
+def test_matricula_fuera_de_la_lista_avisa_y_deja_los_campos_vacios():
+    at = AppTest.from_function(_app_con_lista, default_timeout=30).run()
+    at.text_input[0].input("999999").run()
+    assert "no está en la lista" in at.error[0].value
+    assert [t.value for t in at.text_input[1:4]] == ["", "", ""]
+
+
+def test_cambiar_a_una_matricula_ajena_borra_los_datos_cargados():
+    at = AppTest.from_function(_app_con_lista, default_timeout=30).run()
+    at.text_input[0].input("177195").run()
+    at.text_input[0].input("999999").run()
+    assert [t.value for t in at.text_input[1:4]] == ["", "", ""]
