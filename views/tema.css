@@ -38,8 +38,8 @@ p, li, label { line-height: 1.55; }
 .camino .logo.fca { object-position: left center; }
 .camino .logo.gestion { object-position: right center; }
 .camino .inst { display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; color: var(--marino); text-wrap: balance; }
-.camino .inst .kicker { font: 700 .66rem/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--suave); }
-.camino .inst .nombre { font: 600 1.28rem/1.18 var(--serif); letter-spacing: -.01em; }
+.camino .inst .area { font: 600 .92rem/1.3 var(--sans); color: var(--suave); }
+.camino .inst .nombre { font: 600 1.28rem/1.2 var(--serif); letter-spacing: -.01em; }
 .camino .inst::after { content: ""; width: 2.6rem; height: 3px; margin-top: .15rem; border-radius: 2px; background: var(--oro); }
 .camino ol { list-style: none; display: flex; align-items: flex-start; margin: 0; padding: 0; }
 .camino li { position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: .4rem; min-width: 0; }
@@ -51,7 +51,7 @@ p, li, label { line-height: 1.55; }
 .camino li.actual .punto { border-color: var(--marino); background: var(--marino); box-shadow: 0 0 0 4px rgba(15, 30, 74, .14); }
 .camino .rotulo { font-size: .78rem; color: var(--suave); text-align: center; line-height: 1.2; }
 .camino li.actual .rotulo { color: var(--marino); font-weight: 700; }
-@media (max-width: 520px) { .camino li:not(.actual) .rotulo { display: none; } .camino .marca { grid-template-columns: 3.6rem minmax(0, 1fr) 3.6rem; column-gap: .6rem; } .camino .logo { height: 3.6rem; } .camino .inst .nombre { font-size: 1rem; } .camino .inst .kicker { font-size: .56rem; letter-spacing: .08em; } }
+@media (max-width: 520px) { .camino li:not(.actual) .rotulo { display: none; } .camino .marca { grid-template-columns: 3.6rem minmax(0, 1fr) 3.6rem; column-gap: .6rem; } .camino .logo { height: 3.6rem; } .camino .inst .nombre { font-size: 1rem; } .camino .inst .area { font-size: .76rem; } }
 
 /* ---- tarjetas: formularios y contenedores con borde ---- */
 [data-testid="stForm"], [data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]) {

@@ -14,8 +14,9 @@ from typing import Sequence
 
 import streamlit as st
 
-INSTITUCION = "Facultad de Contaduría y Administración"
-UNIVERSIDAD = "Universidad Autónoma Benito Juárez de Oaxaca"
+from modules.institucion import CUERPO_ACADEMICO, INSTITUCION
+
+_INSTITUCION_HTML = INSTITUCION.replace(" - ", "\u00a0- ")  # el guion se queda pegado a la palabra anterior al partir la línea
 # Los logos (./static) van incrustados en el HTML como data URI: así se ven igual en local, en Streamlit
 # Cloud (donde la app corre bajo una ruta distinta y una ruta absoluta hacia la carpeta static da 404) y detrás de
 # cualquier proxy. Pesan ~21 KB en total.
@@ -47,7 +48,7 @@ def _logo(clase: str, logo: tuple) -> str:
 def _marca() -> str:
     """Un logo a cada lado y el nombre de la facultad al centro."""
     return (f'<div class="marca">{_logo("fca", LOGO_FCA)}'
-            f'<span class="inst"><span class="kicker">{UNIVERSIDAD}</span><span class="nombre">{INSTITUCION}</span></span>'
+            f'<span class="inst"><span class="nombre">{_INSTITUCION_HTML}</span><span class="area">{CUERPO_ACADEMICO}</span></span>'
             f'{_logo("gestion", LOGO_GESTION)}</div>')
 
 

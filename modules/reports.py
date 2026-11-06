@@ -19,6 +19,7 @@ from xml.sax.saxutils import escape
 
 from modules.acceso import Alumno
 from modules.config_loader import TestConfig
+from modules.institucion import CUERPO_ACADEMICO, INSTITUCION
 from modules.interpretacion import (ALCANCE, SUBTITULO_CIERRE, SUBTITULO_INFORME, TITULO_CIERRE, Informe, construir as construir_informe)
 from modules.scoring import ResultadoTest
 
@@ -285,7 +286,8 @@ def pdf_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequ
             w, h = PILImage.open(ruta).size
             return Image(str(ruta), width=alto * w / h, height=alto, mask="auto")
 
-        centro = [Paragraph("UNIVERSIDAD AUTÓNOMA BENITO JUÁREZ DE OAXACA", ParagraphStyle("k", parent=h3, alignment=1, fontSize=6.6, spaceAfter=3)),
+        centro = [Paragraph(INSTITUCION, ParagraphStyle("k", parent=h3, alignment=1, fontSize=7.6, leading=9.2, spaceBefore=0, spaceAfter=0)),
+                  Paragraph(CUERPO_ACADEMICO, ParagraphStyle("k2", parent=h3, alignment=1, fontSize=7, leading=9, spaceBefore=0, spaceAfter=3)),
                   Paragraph("Reporte de Evaluación Integral",
                             ParagraphStyle("h1c", parent=h1, alignment=1)),
                   Paragraph(SUBTITULO_INFORME,
