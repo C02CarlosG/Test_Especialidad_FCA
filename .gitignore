@@ -10,3 +10,5 @@ __pycache__/
 # Lista de alumnos con nombres y matrículas (datos personales): se carga a Supabase, no se sube al repo.
 ALUMNOS DE *.md
 .playwright-mcp/
+# Configuración local de Claude Code (vista previa en el navegador)
+.claude/

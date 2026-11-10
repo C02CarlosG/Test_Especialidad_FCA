@@ -19,8 +19,9 @@ from xml.sax.saxutils import escape
 
 from modules.acceso import Alumno
 from modules.config_loader import TestConfig
-from modules.institucion import CUERPO_ACADEMICO, INSTITUCION
-from modules.interpretacion import (ALCANCE, SUBTITULO_CIERRE, SUBTITULO_INFORME, TITULO_CIERRE, Informe, construir as construir_informe)
+from modules.institucion import APP, COORDINACION, CUERPO_ACADEMICO, FACULTAD, REPORTE
+from modules.interpretacion import (ALCANCE, PIE_CAMPOS, SUBTITULO_CIERRE, SUBTITULO_INFORME, TITULO_CIERRE, Informe,
+                                    construir as construir_informe, nota_indice)
 from modules.scoring import ResultadoTest
 
 LOGOS = (Path(__file__).resolve().parent.parent / "static" / "logo_fca.png",
@@ -291,7 +292,7 @@ def _armar_pdf(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence
     informe = construir_informe(tests, resultados)
 
     def _encabezado_pdf(p, h1, h3, ancho):
-        """Logo de la FCA a la izquierda, título al centro y logo de la UABJO a la derecha."""
+        """Logo de la FCA a la izquierda, las tres líneas de la institución y el título al centro, y el logo del cuerpo académico a la derecha."""
         alto = 2.3 * cm
 
         def logo(ruta):
@@ -301,9 +302,10 @@ def _armar_pdf(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence
             w, h = PILImage.open(ruta).size
             return Image(str(ruta), width=alto * w / h, height=alto, mask="auto")
 
-        centro = [Paragraph(INSTITUCION, ParagraphStyle("k", parent=h3, alignment=1, fontSize=7.6, leading=9.2, spaceBefore=0, spaceAfter=0)),
+        centro = [Paragraph(FACULTAD, ParagraphStyle("k", parent=h3, alignment=1, fontSize=7.6, leading=9.2, spaceBefore=0, spaceAfter=0)),
+                  Paragraph(COORDINACION, ParagraphStyle("k1", parent=h3, alignment=1, fontSize=7.2, leading=9, spaceBefore=0, spaceAfter=0)),
                   Paragraph(CUERPO_ACADEMICO, ParagraphStyle("k2", parent=h3, alignment=1, fontSize=7, leading=9, spaceBefore=0, spaceAfter=3)),
-                  Paragraph("Reporte de Evaluación Integral",
+                  Paragraph(REPORTE,
                             ParagraphStyle("h1c", parent=h1, alignment=1)),
                   Paragraph(SUBTITULO_INFORME,
                             ParagraphStyle("h3c", parent=h3, alignment=1, fontSize=8.5))]
@@ -332,7 +334,7 @@ def _armar_pdf(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence
         from modules.graficas import grafica_campos, grafica_convergencia, grafica_ocean
         etiqueta = ParagraphStyle("et", parent=chico, fontSize=7.8)
         grande = ParagraphStyle("gr", parent=cuerpo, fontName=negrita, fontSize=12, leading=15, textColor=azul)
-        azul_g = ParagraphStyle("az", parent=grande, textColor=colors.HexColor("#2563EB"))
+        azul_g = ParagraphStyle("az", parent=grande, textColor=azul)
         dom, com = inf.dominante, inf.complementario
         pts = lambda c: (f"{c.puntos} / {c.maximo} pts en el test de competencias" if c.puntos is not None else "Sin datos")  # noqa: E731
         out = [Spacer(1, 4), caja(pn("Alcance del instrumento:", ALCANCE, ParagraphStyle("al", parent=chico, alignment=4, textColor=colors.HexColor("#7A4B00"))),
@@ -344,7 +346,7 @@ def _armar_pdf(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence
         der1 = [p("Campo formativo complementario", etiqueta), p(com.nombre if com else "—", grande), p(pts(com) if com else "", etiqueta)]
         izq2 = [p("RASGOS DE LA PERSONALIDAD requeridos vs. obtenidos", etiqueta)] + requeridos
         der2 = [p("Índice de alineación", etiqueta), p(indice, azul_g),
-                p(f"{sum(r.alto for r in inf.requeridos)} de {len(inf.requeridos)} rasgos requeridos en el nivel más alto", etiqueta)]
+                p(f"{sum(r.alto for r in inf.requeridos)} de {len(inf.requeridos)} rasgos requeridos en el nivel más alto. {nota_indice(inf.indice)}", etiqueta)]
         res = Table([[izq1, der1], [izq2, der2]], colWidths=[ancho * 0.5, ancho * 0.5])
         res.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
                                  ("BOX", (0, 0), (-1, -1), 1.2, colors.HexColor("#BFD6F5")),
@@ -363,7 +365,7 @@ def _armar_pdf(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence
                        pn("Orientación por campo formativo", "", ParagraphStyle("gt2", parent=cuerpo, alignment=1))],
                       [imagen(g1, 5.4 * k * cm) if g1 else "", imagen(g2, 6.0 * k * cm) if g2 else ""],
                       [p("Tus factores más altos son fortalezas conductuales; los más bajos, áreas con espacio para crecer.", chico),
-                       p("En verde, el campo con más puntos en este test: un puntaje alto indica que realizas esas actividades con más autonomía. Es una guía orientativa, no determinista.", chico)]]
+                       p(PIE_CAMPOS, chico)]]
             tg = Table(celdas, colWidths=[ancho / 2, ancho / 2])
             tg.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (0, 1), (-1, 1), "CENTER"),
                                     ("TOPPADDING", (0, 0), (-1, -1), 4), ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#F6F8FC"))]))
@@ -455,8 +457,8 @@ def _armar_pdf(alumno: Alumno, tests: Sequence[TestConfig], resultados: Sequence
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=margen, rightMargin=margen, topMargin=1.5 * cm,
-                            bottomMargin=1.5 * cm, title=f"Resultados {alumno.matricula}",
-                            author="Evaluación Diagnóstica FCA")
+                            bottomMargin=1.5 * cm, title=f"{REPORTE} {alumno.matricula}",
+                            author=APP)
     doc.build(historia)
     return buf.getvalue(), doc.page
 
@@ -559,8 +561,8 @@ def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Se
             c.fill = PatternFill("solid", fgColor=fondo)
         hoja.row_dimensions[fila].height = max(18, 15 * (len(texto) // ancho_car + 1))
 
-    ws["A1"] = "Reporte de Evaluación Integral"
-    ws["A1"].font = Font(bold=True, size=14, color="1B3A8C" if informe else None)
+    ws["A1"] = REPORTE
+    ws["A1"].font = Font(bold=True, size=14, color="0F1E4A" if informe else None)
     datos = [("Alumno", _seguro(alumno.nombre_completo)), ("Matrícula", alumno.matricula),
              ("Semestre", alumno.semestre), ("Edad", alumno.edad), ("Tutor / orientador", _seguro(alumno.tutor)),
              ("Fecha", fecha.strftime("%d/%m/%Y"))]
@@ -615,7 +617,7 @@ def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Se
             porcentaje(ws, fila, 4, c.promedio).font = negrita
         from openpyxl.formatting.rule import DataBarRule
         ws.conditional_formatting.add(f"D{primera}:D{fila}", DataBarRule(start_type="num", start_value=0, end_type="num",
-                                                                       end_value=1, color="2552D0"))
+                                                                       end_value=1, color="0F1E4A"))
         if informe.lectura:
             fila += 1
             parrafo(ws, fila, informe.lectura, fondo="F6F8FC")
@@ -643,7 +645,7 @@ def excel_individual(alumno: Alumno, tests: Sequence[TestConfig], resultados: Se
     if informe:
         d = wb.create_sheet("Diagnóstico")
         d["A1"] = "Diagnóstico orientativo del campo formativo"
-        d["A1"].font = Font(bold=True, size=14, color="1B3A8C")
+        d["A1"].font = Font(bold=True, size=14, color="0F1E4A")
         f2 = 3
         barra(d, f2, "Análisis de afinidad y competencias")
         f2 += 1

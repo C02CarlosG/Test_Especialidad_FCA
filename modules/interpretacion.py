@@ -21,9 +21,10 @@ from fractions import Fraction
 from typing import Sequence
 
 from modules.config_loader import TestConfig
+from modules.institucion import REPORTE_SUBTITULO
 from modules.scoring import ResultadoTest, UMBRAL_EMPATE
 
-SUBTITULO_INFORME = "Evaluación Diagnóstica FCA - Especialidades Lic. en Administración"
+SUBTITULO_INFORME = REPORTE_SUBTITULO
 TITULO_CIERRE = "El desafío de la elección: más allá del interés"
 SUBTITULO_CIERRE = ("Confía en lo que descubriste sobre ti. Esta elección es el primer paso para construir "
                     "un futuro que te inspire.")
@@ -34,6 +35,14 @@ ALCANCE = ("Los resultados de esta evaluación tienen fines exclusivamente educa
            "objetivos académicos del estudiante. Se recomienda revisar el reporte con el tutor u orientador "
            "correspondiente.")
 MARGEN_ALTO = Fraction(15, 100)
+PIE_CAMPOS = ("En dorado, el campo con más puntos en este test: un puntaje alto indica que realizas esas actividades con "
+              "más autonomía. Es una guía orientativa, no determinista.")
+NOTA_INDICE_BAJO = "Es común al inicio de la carrera: señala rasgos por desarrollar, no una falla."
+
+
+def nota_indice(indice: Fraction | None) -> str:
+    """Frase de apoyo cuando la alineación es baja; vacía en los demás casos."""
+    return NOTA_INDICE_BAJO if indice is not None and indice < Fraction(1, 2) else ""
 
 
 @dataclass(frozen=True)

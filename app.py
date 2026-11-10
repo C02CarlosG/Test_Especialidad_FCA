@@ -5,11 +5,12 @@ import streamlit as st
 
 from modules.config_loader import load_all_tests
 from modules.db import SupabaseRepo, crear_cliente
+from modules.institucion import APP
 from views import paginas
 
 RAIZ = Path(__file__).parent
 
-st.set_page_config(page_title="Evaluación Diagnóstica FCA", page_icon="🎓", layout="centered")
+st.set_page_config(page_title=APP, page_icon="🎓", layout="centered")
 
 
 @st.cache_resource
