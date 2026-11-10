@@ -170,3 +170,10 @@ def test_la_recomendacion_del_ingles_sale_solo_si_negocios_internacionales_esta_
             assert rol in ("tu campo dominante", "tu campo complementario", "un campo para explorar") and "B1" in texto
         if "NI" in primeras[:2]:
             assert not any("Negocios Internacionales se requiere" in n for n in inf.notas)  # la recomendación sustituye a la nota
+
+
+def test_el_pdf_con_informe_cabe_en_cuatro_paginas_sin_importar_las_respuestas():
+    from pypdf import PdfReader
+    for i1, i2 in ((7, 3), (40, 20), (0, 0)):
+        pdf = pdf_individual(alumno(), [TEST1, TEST2], _resultados(i1, i2), datetime(2026, 11, 3))
+        assert len(PdfReader(io.BytesIO(pdf)).pages) <= 4

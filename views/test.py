@@ -18,7 +18,7 @@ from modules.avance import (AvanceError, Posicion, RepositorioAvance, calcular_p
                             guardar_bloque)
 from modules.config_loader import TestConfig
 from modules.interpretacion import construir as construir_informe
-from modules.reports import AVISO, excel_individual, grafica_radar, pdf_individual, vista_conjunta
+from modules.reports import AVISO, grafica_radar, pdf_individual, vista_conjunta
 from modules.resultados import resultados_del_alumno
 from modules.scoring import ResultadoTest
 from views import informe as vista_informe, tema
@@ -65,12 +65,8 @@ def _nota(r: ResultadoTest) -> str | None:
 
 def _descargas(alumno: Alumno, archivos: dict) -> None:
     st.info("Descarga tus resultados ahora: al cerrar esta página ya no podrás volver a consultarlos aquí.")
-    c1, c2 = st.columns(2)
-    c1.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
+    st.download_button("Descargar PDF", archivos["pdf"], file_name=f"resultados_{alumno.matricula}.pdf",
                        mime="application/pdf", width="stretch", type="primary", on_click="ignore")
-    c2.download_button("Descargar Excel", archivos["xlsx"], file_name=f"resultados_{alumno.matricula}.xlsx",
-                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                       width="stretch", on_click="ignore")
 
 
 def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados: list[ResultadoTest],
@@ -133,14 +129,13 @@ def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], m
             resultados = resultados_del_alumno(repo, alumno, tests)
             fecha = datetime.now(ZONA)
             pdf = pdf_individual(alumno, tests, resultados, fecha)
-            xlsx = excel_individual(alumno, tests, resultados, fecha)
         except Exception:
             log.exception("No se pudieron generar los resultados del alumno")
             st.error("Tus respuestas están guardadas, pero no pudimos generar tus resultados ahora. "
                      "Pulsa Reintentar; si sigue fallando, tu tutor podrá entregarte tus resultados.")
             st.button("Reintentar", type="primary")  # al pulsarlo, Streamlit vuelve a ejecutar esta pantalla
             return
-        archivos.update(resultados=resultados, pdf=pdf, xlsx=xlsx)
+        archivos.update(resultados=resultados, pdf=pdf)
     _mostrar_resultados(alumno, tests, archivos["resultados"], archivos)
 
 

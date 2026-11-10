@@ -66,7 +66,7 @@ def mostrar(alumno: Alumno, informe: Informe, fecha: datetime, cache: dict) -> N
     _caja("resumen", f'<div class="r4"><div><div class="et">Perfil vocacional dominante</div>'
                      f'<div class="gr">{escape(dom.nombre)}</div><div class="et">{escape(_campo_pts(dom))}</div></div>'
                      f'<div><div class="et">Campo formativo complementario</div>{complementario}</div>'
-                     f'<div><div class="et">Rasgos Big Five requeridos vs. obtenidos</div>{requeridos}</div>'
+                     f'<div><div class="et">RASGOS DE LA PERSONALIDAD requeridos vs. obtenidos</div>{requeridos}</div>'
                      f'<div><div class="et">Índice de alineación</div><div class="gr az">{indice}</div>'
                      f'<div class="et">{escape(explica)}</div></div></div>'
                      f'<div class="conf"><span class="chip {chip_conf}">Confianza {informe.confianza}</span>'
@@ -79,7 +79,7 @@ def mostrar(alumno: Alumno, informe: Informe, fecha: datetime, cache: dict) -> N
 
     c1, c2 = st.columns(2)
     for col, titulo, png, pie in (
-            (c1, "Resultados Big Five (OCEAN)", grafica('g_ocean', grafica_ocean),
+            (c1, "Resultados de Rasgos de la Personalidad", grafica('g_ocean', grafica_ocean),
              "Tus factores más altos son fortalezas conductuales; los más bajos, áreas con espacio para crecer."),
             (c2, "Orientación por campo formativo", grafica('g_campos', grafica_campos),
              "En verde, el campo con más puntos en este test: un puntaje alto indica que realizas esas actividades con más autonomía. Es una guía orientativa, no determinista.")):

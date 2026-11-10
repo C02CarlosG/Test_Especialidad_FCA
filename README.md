@@ -1,7 +1,7 @@
 # Evaluación Diagnóstica FCA
 
 Aplicación web para que estudiantes mayores de edad de la Facultad de Contaduría y Administración (UABJO)
-contesten, desde su celular, dos tests —**Test 1: The Big Five** y **Test 2: Especialidades Lic. en Administración**— y
+contesten, desde su celular, dos tests —**Test 1: Rasgos de la Personalidad** y **Test 2: Especialidades Lic. en Administración**— y
 reciban una guía de **qué especialidad podría convenirles**. El docente ve el avance de todos, descarga los
 reportes y genera el código QR de acceso.
 

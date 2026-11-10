@@ -106,7 +106,7 @@ def test_flujo_completo_hasta_la_pantalla_final():
     assert not at.exception and not at.error
     assert "Tus resultados" in [h.value for h in at.subheader]
     botones = at.get("download_button")
-    assert [b.proto.label for b in botones] == ["Descargar PDF", "Descargar Excel"]
+    assert [b.proto.label for b in botones] == ["Descargar PDF"]
 
 
 def test_recargar_conserva_el_avance():
@@ -131,14 +131,14 @@ def test_si_no_se_muestran_resultados_solo_agradece():
     assert not at.get("download_button") and "Tus resultados" not in [h.value for h in at.subheader]
 
 
-def test_si_falla_el_excel_no_queda_cache_a_medias_y_reintentar_lo_resuelve(monkeypatch):
+def test_si_falla_el_pdf_no_queda_cache_a_medias_y_reintentar_lo_resuelve(monkeypatch):
     import views.test as vt
-    original = vt.excel_individual
+    original = vt.pdf_individual
 
     def roto(*a, **k):
         raise RuntimeError("falla simulada")
 
-    monkeypatch.setattr(vt, "excel_individual", roto)
+    monkeypatch.setattr(vt, "pdf_individual", roto)
     at = _llenar(_nuevo())
     _contestar_todo(at, "3").button[0].click().run()   # t1 bloque 1
     _contestar_todo(at, "3").button[0].click().run()   # t1 bloque 2 (cierra t1)
@@ -148,10 +148,10 @@ def test_si_falla_el_excel_no_queda_cache_a_medias_y_reintentar_lo_resuelve(monk
     assert [b.label for b in at.button] == ["Reintentar"] and not at.get("download_button")
     at.run()                                            # otro rerun con el fallo persistente
     assert not at.exception and "no pudimos generar" in at.error[0].value
-    monkeypatch.setattr(vt, "excel_individual", original)
+    monkeypatch.setattr(vt, "pdf_individual", original)
     at.button[0].click().run()
     assert not at.exception and not at.error
-    assert [b.proto.label for b in at.get("download_button")] == ["Descargar PDF", "Descargar Excel"]
+    assert [b.proto.label for b in at.get("download_button")] == ["Descargar PDF"]
 
 
 def test_con_resultados_en_sesion_no_se_consulta_la_bd_en_cada_rerun():
@@ -159,7 +159,7 @@ def test_con_resultados_en_sesion_no_se_consulta_la_bd_en_cada_rerun():
     _contestar_todo(at, "3").button[0].click().run()
     _contestar_todo(at, "3").button[0].click().run()
     _contestar_todo(at, "SE").button[0].click().run()
-    assert len(at.get("download_button")) == 2
+    assert len(at.get("download_button")) == 1
     repo = at.session_state["repo"]
 
     def prohibido(*a, **k):
@@ -169,7 +169,7 @@ def test_con_resultados_en_sesion_no_se_consulta_la_bd_en_cada_rerun():
     repo.obtener_respuestas = prohibido
     at.run()
     assert not at.exception and not at.error
-    assert len(at.get("download_button")) == 2
+    assert len(at.get("download_button")) == 1
 
 
 def test_los_botones_de_descarga_no_disparan_rerun():
@@ -178,7 +178,7 @@ def test_los_botones_de_descarga_no_disparan_rerun():
     _contestar_todo(at, "3").button[0].click().run()
     _contestar_todo(at, "SE").button[0].click().run()
     botones = at.get("download_button")
-    assert len(botones) == 2 and all(b.proto.ignore_rerun for b in botones)
+    assert len(botones) == 1 and all(b.proto.ignore_rerun for b in botones)
 
 
 def test_el_semestre_es_un_desplegable_del_primero_al_octavo():
