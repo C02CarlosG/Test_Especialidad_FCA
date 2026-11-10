@@ -34,7 +34,7 @@ def _errores(ruta) -> str:
 
 def test_test_1_real_big_five():
     cfg = load_test_config(CARPETA / "1_test_big_five.xlsx")
-    assert cfg.titulo == "Test 1: The Big Five"
+    assert cfg.titulo == "Test 1: Rasgos de la Personalidad"
     assert cfg.instrucciones.startswith("Evalúa cada afirmación") and "columna" not in cfg.instrucciones
     assert len(cfg.especialidades) == 5 and len(cfg.preguntas) == 25
     assert (cfg.valor_min, cfg.valor_max) == (1, 5)

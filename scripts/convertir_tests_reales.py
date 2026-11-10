@@ -90,7 +90,7 @@ def test_1() -> None:
                ("afinidad", 0, "Desarrollo Requerido")]
     # Se omite la frase de la calculadora que habla de la "columna Respuesta" de Excel.
     instrucciones = ws["A5"].value.split(" Selecciona")[0].strip()
-    escribir(DESTINO / "1_test_big_five.xlsx", "Test 1: The Big Five", instrucciones, esp, preguntas, escala,
+    escribir(DESTINO / "1_test_big_five.xlsx", "Test 1: Rasgos de la Personalidad", instrucciones, esp, preguntas, escala,
              niveles, afinidades)
 
 

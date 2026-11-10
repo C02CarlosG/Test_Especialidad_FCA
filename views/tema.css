@@ -200,7 +200,7 @@ label[data-testid="stRadioOption"]:has(input:focus-visible) { outline: 3px solid
 .inf.cab h1::after { margin-inline: auto; }
 .inf.cab .datos { margin: .3rem 0 0; font-weight: 600; color: var(--pizarra); font-size: .92rem; }
 .inf.cab .folio { margin: 0; color: var(--suave); font-size: .8rem; }
-.inf .alcance { text-align: left; background: #FFF9E0; border-left: 4px solid var(--oro); color: #7A4B00; padding: .8rem 1rem; border-radius: 4px; margin-top: .9rem; font-size: .85rem; line-height: 1.5; }
+.inf .alcance { text-align: justify; background: #FFF9E0; border-left: 4px solid var(--oro); color: #7A4B00; padding: .8rem 1rem; border-radius: 4px; margin-top: .9rem; font-size: .85rem; line-height: 1.5; }
 .inf.resumen { border: 2px solid #BFD6F5; }
 .inf .r4 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem 1.6rem; }
 @media (max-width: 640px) { .inf .r4 { grid-template-columns: 1fr; } }
