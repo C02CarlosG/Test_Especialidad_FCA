@@ -7,6 +7,7 @@ from typing import Callable
 
 import streamlit as st
 
+from modules.institucion import APP
 from views import admin, alumno, tema
 
 log = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ def pagina_alumno(cargar: Callable, aviso_md: str, secreto: Callable, cliente_ip
         log.exception("Configuración incompleta")
         tema.aplicar()
         tema.marca()
-        st.title("Evaluación Diagnóstica FCA")
+        st.title(APP)
         st.error("El test no está disponible por el momento. Avisa a tu docente.")
         return
     # El alumno ve y descarga sus resultados al terminar, salvo que [app] MOSTRAR_RESULTADO_AL_ALUMNO sea false.

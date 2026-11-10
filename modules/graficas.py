@@ -41,9 +41,9 @@ def grafica_ocean(informe: Informe) -> bytes | None:
     fig, ax = plt.subplots(figsize=(4.6, 4.2), subplot_kw={"projection": "polar"})
     ax.set_theta_offset(pi / 2)
     ax.set_theta_direction(-1)
-    ax.plot(ang + ang[:1], val + val[:1], color=AZUL, linewidth=2.4)
-    ax.fill(ang + ang[:1], val + val[:1], color=AZUL, alpha=0.18)
-    ax.scatter(ang, val, s=34, color="white", edgecolor=AZUL, linewidth=1.8, zorder=3)
+    ax.plot(ang + ang[:1], val + val[:1], color=MARINO, linewidth=2.4)
+    ax.fill(ang + ang[:1], val + val[:1], color=MARINO, alpha=0.14)
+    ax.scatter(ang, val, s=38, color=ORO, edgecolor=MARINO, linewidth=1.6, zorder=3)
     ax.set_xticks(ang)
     ax.set_xticklabels([f"{_corto(r.nombre)}\n{round(v)} %" for r, v in zip(rasgos, val)], fontsize=8.5, color=MARINO)
     ax.set_ylim(0, 100)
@@ -55,7 +55,7 @@ def grafica_ocean(informe: Informe) -> bytes | None:
 
 
 def grafica_campos(informe: Informe) -> bytes | None:
-    """Barras con los puntos del test de competencias por campo; en verde, el campo (o campos) con más puntos."""
+    """Barras con los puntos del test de competencias por campo; en oro, el campo (o campos) con más puntos."""
     campos = [c for c in informe.campos if c.puntos is not None]
     if not campos:
         return None
@@ -63,7 +63,7 @@ def grafica_campos(informe: Informe) -> bytes | None:
     maximo = max(c.maximo for c in campos)
     fig, ax = plt.subplots(figsize=(5.0, 4.0))
     mejor = max(c.puntos for c in campos)
-    colores = [VERDE if c.puntos == mejor else PIZARRA for c in campos]
+    colores = [ORO if c.puntos == mejor else PIZARRA for c in campos]
     barras = ax.bar(range(len(campos)), [c.puntos for c in campos], color=colores, width=0.62)
     for b, c in zip(barras, campos):
         ax.text(b.get_x() + b.get_width() / 2, c.puntos + maximo * 0.015, f"{c.puntos} pts", ha="center", va="bottom",

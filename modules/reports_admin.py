@@ -12,6 +12,7 @@ import zipfile
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from modules.institucion import APP
 from modules.panel import FilaAlumno, PanelDatos
 from modules.reports import AVISO, _nombre_de, _seguro, con_logos, pct, pdf_individual
 from modules.scoring import ResultadoTest
@@ -66,7 +67,7 @@ def excel_concentrado(panel: PanelDatos, fecha: datetime) -> bytes:
     # --- Resumen ---
     ws = wb.active
     ws.title = "Resumen"
-    ws["A1"] = "Evaluación Diagnóstica FCA - Concentrado"
+    ws["A1"] = f"{APP} - Concentrado"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A2"] = f"Generado: {fecha.strftime('%d/%m/%Y %H:%M')}"
     total, terminados = len(panel.filas), panel.terminados
@@ -209,7 +210,7 @@ def zip_pdfs(panel: PanelDatos, fecha: datetime) -> tuple[bytes, int, int]:
             nombres_usados.add(nombre)
             z.writestr(nombre, pdf_individual(f.alumno, panel.tests, list(f.resultados), fecha))
             incluidos += 1
-        leeme = [f"Evaluación Diagnóstica FCA - PDFs generados el {fecha.strftime('%d/%m/%Y %H:%M')}",
+        leeme = [f"{APP} - PDFs generados el {fecha.strftime('%d/%m/%Y %H:%M')}",
                  f"Incluidos: {incluidos}. Omitidos por no haber terminado todos los tests: {len(omitidos)}."]
         leeme += [f"- {a.matricula}" for a in omitidos]
         z.writestr("LEEME.txt", "\n".join(leeme) + "\n")

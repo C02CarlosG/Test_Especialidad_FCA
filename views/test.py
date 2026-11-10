@@ -17,6 +17,7 @@ from modules.acceso import Alumno
 from modules.avance import (AvanceError, Posicion, RepositorioAvance, calcular_posicion,
                             guardar_bloque)
 from modules.config_loader import TestConfig
+from modules.institucion import APP
 from modules.interpretacion import construir as construir_informe
 from modules.reports import AVISO, grafica_radar, pdf_individual, vista_conjunta
 from modules.resultados import resultados_del_alumno
@@ -43,7 +44,7 @@ def _opciones(test: TestConfig) -> tuple[list, dict]:
 def _encabezado(pos: Posicion, tests: Sequence[TestConfig]) -> None:
     test = pos.test
     tema.cabecera(tests, pos.numero_test)
-    st.title("Evaluación Diagnóstica FCA")
+    st.title(APP)
     st.subheader(test.titulo)
     st.progress(pos.contestadas / len(test.preguntas),
                 text=f"Bloque {pos.numero_bloque} de {pos.total_bloques} · "
@@ -116,7 +117,7 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
 
 def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool) -> None:
     tema.cabecera(tests, len(tests) + 1)
-    st.title("Evaluación Diagnóstica FCA")
+    st.title(APP)
     st.success("¡Terminaste! Tus respuestas quedaron guardadas.")
     if not mostrar:
         st.write("Gracias por tu participación. Tu tutor u orientador te compartirá los resultados. "
