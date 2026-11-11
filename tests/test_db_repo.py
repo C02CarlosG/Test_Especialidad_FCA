@@ -41,3 +41,13 @@ def test_crear_alumno_envia_aceptacion_de_privacidad():
     assert enviado["acepto_privacidad"] is True and enviado["acepto_en"] == ahora.isoformat()
     assert enviado["edad"] == 20 and enviado["tutor"] == "T" and "correo" not in enviado
     assert a.estado == "en_curso"
+
+
+def test_actualizar_datos_envia_edad_tutor_y_semestre():
+    cliente = MagicMock()
+    SupabaseRepo(cliente).actualizar_datos("id1", 21, "Mtra. Gómez", 6)
+    tabla = cliente.table
+    tabla.assert_called_with("alumnos")
+    actualizar = tabla.return_value.update
+    actualizar.assert_called_once_with({"edad": 21, "tutor": "Mtra. Gómez", "semestre": 6})
+    actualizar.return_value.eq.assert_called_once_with("id", "id1")
