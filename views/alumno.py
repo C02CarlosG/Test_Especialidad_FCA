@@ -15,7 +15,8 @@ import streamlit as st
 from modules.acceso import (AccesoBloqueado, AccesoError, DatosAcceso, DatosInvalidos, Repositorio,
                             buscar_autorizado, iniciar_acceso, separar_nombre)
 from modules.institucion import APP, DESCRIPCION
-from modules.security import SEMESTRE_MAXIMO, SEMESTRE_MINIMO
+from modules.security import MATRICULA_MAX, SEMESTRE_MAXIMO, SEMESTRE_MINIMO
+from modules.security import matricula_valida as sec_matricula_valida
 from views import tema, test
 
 log = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ def _autocompletar(repo: Repositorio, cliente_ip: str) -> None:
             ss["reg_paterno"], ss["reg_materno"], ss["reg_nombres"] = separar_nombre(nombre)
             ss["reg_semestre"] = SEMESTRE_LISTA
             ss["reg_aviso_matricula"] = ("ok", "Cargamos tus datos de la lista. Revisa que sean correctos.")
-        elif len(ss.get("reg_matricula", "").strip()) == 6:
+        elif sec_matricula_valida(ss.get("reg_matricula", "").strip()):
             ss["reg_aviso_matricula"] = ("error", "Esta matrícula no está en la lista de alumnos autorizados. "
                                                   "Revísala o avisa a tu tutor.")
 
@@ -64,7 +65,7 @@ def _registro(repo: Repositorio, tests: Sequence, aviso_md: str, cliente_ip: str
     st.subheader("Registro del estudiante")
     # La matrícula va fuera del formulario: un formulario no reacciona hasta enviarse, y aquí debe llenar
     # los demás campos en cuanto se escribe.
-    matricula = st.text_input("Matrícula *", max_chars=6, placeholder="6 números", key="reg_matricula",
+    matricula = st.text_input("Matrícula *", max_chars=MATRICULA_MAX, placeholder="Solo números", key="reg_matricula",
                               on_change=_autocompletar, args=(repo, cliente_ip),
                               help="Escríbela y presiona Enter: tus datos se cargan solos.")
     aviso = st.session_state.get("reg_aviso_matricula")

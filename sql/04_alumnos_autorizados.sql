@@ -2,7 +2,7 @@
 -- el resto de las columnas es informativo. Ejecutar en Supabase (SQL Editor); es seguro repetirlo.
 -- La lista se carga con scripts/importar_alumnos_autorizados.py (no se escribe a mano).
 create table if not exists public.alumnos_autorizados (
-    matricula text primary key check (matricula ~ '^[0-9]{6}$'),
+    matricula text primary key check (matricula ~ '^[0-9]{1,10}$'),
     nombre    text not null,
     sexo      text,
     estatus   text,                         -- REGULAR | IRREGULAR, tal como viene en la lista

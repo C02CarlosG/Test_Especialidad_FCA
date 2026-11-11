@@ -12,7 +12,12 @@ MAX_INTENTOS_MATRICULA = 5
 MAX_INTENTOS_CLIENTE = 100
 VENTANA_INTENTOS_MIN = 15
 
-_RE_MATRICULA = re.compile(r"[0-9]{6}")  # exactamente 6 dígitos (solo ASCII)
+MATRICULA_MAX = 10
+_RE_MATRICULA = re.compile(r"[0-9]{1,%d}" % MATRICULA_MAX)  # solo dígitos ASCII, sin largo fijo (hay matrículas de 5 y de 6)
+
+
+def matricula_valida(matricula: str) -> bool:
+    return bool(_RE_MATRICULA.fullmatch(matricula))
 
 
 EDAD_MINIMA = 18
@@ -62,7 +67,7 @@ def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
         if not _nombre_ok(str(v[campo])):
             errores[campo] = f"Escribe {etiqueta}."
     if not _RE_MATRICULA.fullmatch(str(v["matricula"])):
-        errores["matricula"] = "La matrícula debe tener exactamente 6 números."
+        errores["matricula"] = f"La matrícula debe tener solo números (hasta {MATRICULA_MAX})."
     if edad is None:
         errores["edad"] = "Escribe tu edad."
     elif edad < EDAD_MINIMA:

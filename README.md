@@ -14,7 +14,7 @@ Hecha con [Streamlit](https://streamlit.io) y [Supabase](https://supabase.com) (
 
 **Alumno** (en la raíz de la URL, pensado para el celular)
 
-1. Se registra: apellidos, nombre(s), matrícula (6 dígitos), semestre (del 1.º al 8.º), edad (mínimo 18), tutor, y acepta el aviso de privacidad.
+1. Se registra: apellidos, nombre(s), matrícula (solo números), semestre (del 1.º al 8.º), edad (mínimo 18), tutor, y acepta el aviso de privacidad.
 2. Contesta los tests **en orden**, en bloques de 10 preguntas, con barra de avance. **Todas las preguntas son
    obligatorias**; cada bloque se guarda al continuar.
 3. Si recarga la página, vuelve a escribir su matrícula y nombre y **continúa donde se quedó**.

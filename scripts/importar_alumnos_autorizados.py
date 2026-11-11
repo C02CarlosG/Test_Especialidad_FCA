@@ -5,7 +5,7 @@ Uso:  python scripts/importar_alumnos_autorizados.py ["ALUMNOS DE 5o. SEMESTRE L
 Requiere haber ejecutado sql/04_alumnos_autorizados.sql y tener .streamlit/secrets.toml con [supabase].
 Es repetible: actualiza por matrícula. Con --reemplazar borra las matrículas que ya no vienen
 en el archivo, salvo los accesos de prueba con estatus PRUEBA (quedan sin acceso, pero los alumnos ya registrados conservan su avance).
-Las filas con matrícula que no tiene 6 dígitos no se cargan (la app solo acepta 6) y se listan al final.
+Las filas cuya matrícula no sea solo números (hasta 10) no se cargan y se avisan.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 ARCHIVO = RAIZ / "ALUMNOS DE 5o. SEMESTRE Licenciatura.md"
-_RE_MAT = re.compile(r"[0-9]{6}")
+_RE_MAT = re.compile(r"[0-9]{1,10}")
 
 
 def leer_lista(texto: str) -> tuple[list[dict[str, str]], list[str]]:
@@ -29,7 +29,7 @@ def leer_lista(texto: str) -> tuple[list[dict[str, str]], list[str]]:
             continue
         _, matricula, nombre, sexo, _fecha, estatus = celdas[:6]
         if not _RE_MAT.fullmatch(matricula):
-            avisos.append(f"Matrícula «{matricula}» ({nombre}) no tiene 6 dígitos: no se carga.")
+            avisos.append(f"Matrícula «{matricula}» ({nombre}) no es numérica (hasta 10 dígitos): no se carga.")
             continue
         if matricula in filas:
             avisos.append(f"Matrícula {matricula} repetida ({nombre}): se conserva la última.")

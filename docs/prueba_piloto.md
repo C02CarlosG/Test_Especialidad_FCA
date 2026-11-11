@@ -97,7 +97,7 @@ Registro correcto:
 ## 9. Al terminar: borrar los datos de prueba
 
 Los participantes dejaron registros reales en la base de datos. Bórralos para que no se mezclen con los alumnos.
-En Supabase, *SQL Editor*, ejecuta (la matrícula es texto de 6 dígitos; ajusta el rango si usaste otras):
+En Supabase, *SQL Editor*, ejecuta (la matrícula es texto numérico; ajusta el rango si usaste otras):
 
 ```sql
 delete from public.alumnos where matricula between '900001' and '900005';

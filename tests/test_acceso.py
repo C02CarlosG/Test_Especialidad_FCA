@@ -186,7 +186,7 @@ def test_buscar_autorizado_devuelve_el_nombre_y_no_cuenta_intento():
 
 def test_buscar_autorizado_ignora_lo_incompleto_sin_consultar_ni_contar():
     r = FakeRepo(autorizadas={"654321": "X"})
-    assert buscar_autorizado(r, "6543", IP, AHORA) is None and not r.intentos
+    assert buscar_autorizado(r, "65A43", IP, AHORA) is None and not r.intentos  # no es numérica: ni se consulta
 
 
 def test_buscar_matriculas_ajenas_cuenta_intentos_y_termina_bloqueando():
@@ -195,3 +195,9 @@ def test_buscar_matriculas_ajenas_cuenta_intentos_y_termina_bloqueando():
         assert buscar_autorizado(r, "111111", IP, AHORA) is None
     with pytest.raises(AccesoBloqueado):
         buscar_autorizado(r, "111111", IP, AHORA)
+
+
+def test_matricula_de_5_digitos_de_la_lista_entra_y_se_autocompleta():
+    r = FakeRepo(autorizadas={"38974": "BAUTISTA CABAÑAS SALVADOR"})
+    assert buscar_autorizado(r, "38974", IP, AHORA) == "BAUTISTA CABAÑAS SALVADOR"
+    assert iniciar_acceso(r, datos(matricula="38974"), IP, AHORA).alumno.matricula == "38974"

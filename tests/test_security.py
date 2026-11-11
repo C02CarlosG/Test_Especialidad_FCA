@@ -18,7 +18,7 @@ def test_datos_validos_se_normalizan():
 @pytest.mark.parametrize("campo,valor", [
     ("apellido_paterno", ""), ("apellido_paterno", "123"), ("apellido_materno", "   "),
     ("nombres", ""), ("nombres", "A" * 81),
-    ("matricula", ""), ("matricula", "12345"), ("matricula", "1234567"), ("matricula", "12345a"),
+    ("matricula", ""), ("matricula", "12345678901"), ("matricula", "12345a"),
     ("matricula", "12 456"), ("matricula", "12-456"), ("matricula", "١٢٣٤٥٦"),
     ("edad", None), ("edad", 17), ("edad", 0), ("edad", 100),
     ("semestre", None), ("semestre", 0), ("semestre", 9),
@@ -65,3 +65,8 @@ def test_normalizar_texto_quita_caracteres_no_validos(sucio, limpio):
 def test_un_nombre_con_no_caracteres_se_guarda_limpio():
     v, e = sec.validar_datos("Pérez\ufffe", "López", "Ana\uffff", "123456", 20, "Mtro. \ufffeRuiz", 5)
     assert e == {} and (v["apellido_paterno"], v["nombres"], v["tutor"]) == ("Pérez", "Ana", "Mtro. Ruiz")
+
+
+def test_matricula_de_5_digitos_es_valida():
+    v, errores = sec.validar_datos("Pérez", "López", "Ana", " 38974 ", 20, "Mtro. Juan Ruiz", 5)
+    assert not errores and v["matricula"] == "38974"

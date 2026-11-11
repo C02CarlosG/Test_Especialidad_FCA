@@ -163,7 +163,7 @@ def buscar_autorizado(repo: Repositorio, matricula: str, cliente_ip: str,
     nadie puede recorrer matrículas para averiguar nombres. Lanza AccesoBloqueado si ya se bloqueó."""
     ahora = ahora or datetime.now(timezone.utc)
     m = sec.normalizar_matricula(matricula)
-    if not (len(m) == 6 and m.isascii() and m.isdigit()):
+    if not sec.matricula_valida(m):
         return None
     clave_mat, clave_cli = sec.clave_matricula(m), sec.clave_cliente(cliente_ip)
     _verificar_no_bloqueado(repo, clave_mat, clave_cli, ahora)
