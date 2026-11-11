@@ -87,6 +87,33 @@ def test_matricula_en_curso_reanuda_con_mismo_nombre():
     assert res.reanudado and len(r.alumnos) == 1
 
 
+def test_al_reanudar_se_actualizan_edad_tutor_y_semestre():
+    r = repo()
+    iniciar_acceso(r, datos(), IP, AHORA)
+    res = iniciar_acceso(r, datos(edad=21, tutor="Mtra. Gómez", semestre=6), IP, AHORA)
+    assert res.reanudado
+    a = r.alumnos["123456"]
+    assert (a.edad, a.tutor, a.semestre) == (21, "Mtra. Gómez", 6)
+    assert (res.alumno.edad, res.alumno.tutor, res.alumno.semestre) == (21, "Mtra. Gómez", 6)
+
+
+def test_al_reanudar_con_los_mismos_datos_no_se_escribe_nada():
+    r = repo()
+    iniciar_acceso(r, datos(), IP, AHORA)
+    llamadas = []
+    r.actualizar_datos = lambda *a: llamadas.append(a)
+    assert iniciar_acceso(r, datos(), IP, AHORA).reanudado
+    assert llamadas == []
+
+
+def test_reanudar_con_otro_nombre_no_cambia_los_datos():
+    r = repo()
+    iniciar_acceso(r, datos(), IP, AHORA)
+    with pytest.raises(MatriculaNoDisponible):
+        iniciar_acceso(r, datos(nombres="Beatriz", edad=30), IP, AHORA)
+    assert r.alumnos["123456"].edad == 20
+
+
 def test_matricula_en_curso_con_otro_nombre_se_rechaza_y_cuenta_como_intento():
     r = repo()
     iniciar_acceso(r, datos(), IP, AHORA)

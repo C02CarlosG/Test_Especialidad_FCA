@@ -7,7 +7,7 @@ con el QR solo entra quien está en la lista. No hay código de grupo.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
@@ -64,6 +64,7 @@ class Repositorio(Protocol):
     def crear_alumno(self, apellido_paterno: str, apellido_materno: str, nombres: str,
                      matricula: str, edad: int, tutor: str, acepto_en: datetime,
                      semestre: int | None = None) -> Alumno: ...
+    def actualizar_datos(self, alumno_id: str, edad: int, tutor: str, semestre: int) -> None: ...
 
 
 class AccesoError(Exception):
@@ -172,6 +173,16 @@ def buscar_autorizado(repo: Repositorio, matricula: str, cliente_ip: str,
     return nombre
 
 
+def _con_datos_nuevos(repo: Repositorio, existente: Alumno, v: dict[str, str | int]) -> Alumno:
+    """Al reanudar (p. ej. tras reiniciar un test) vale lo que el alumno acaba de escribir: edad, tutor y
+    semestre se actualizan si cambiaron. El nombre no, porque es lo que identifica a quien reanuda."""
+    edad, tutor, semestre = int(v["edad"]), str(v["tutor"]), int(v["semestre"])
+    if (edad, tutor, semestre) == (existente.edad, existente.tutor, existente.semestre):
+        return existente
+    repo.actualizar_datos(existente.id, edad, tutor, semestre)
+    return replace(existente, edad=edad, tutor=tutor, semestre=semestre)
+
+
 def iniciar_acceso(repo: Repositorio, datos: DatosAcceso, cliente_ip: str,
                    ahora: datetime | None = None) -> ResultadoAcceso:
     """Valida y registra al alumno. Lanza AccesoError (o subclase) si no puede entrar.
@@ -204,7 +215,7 @@ def iniciar_acceso(repo: Repositorio, datos: DatosAcceso, cliente_ip: str,
     existente = repo.obtener_alumno_por_matricula(str(v["matricula"]))
     if existente is not None:
         if existente.estado == "en_curso" and _mismo_nombre(existente, v):
-            return ResultadoAcceso(existente, reanudado=True)
+            return ResultadoAcceso(_con_datos_nuevos(repo, existente, v), reanudado=True)
         if existente.estado != "terminado":  # intento de entrar con datos ajenos
             _registrar_fallo(repo, clave_mat, clave_cli)
         raise MatriculaNoDisponible()

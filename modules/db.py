@@ -99,6 +99,9 @@ class SupabaseRepo:
             raise
         return _alumno(r.data[0])
 
+    def actualizar_datos(self, alumno_id: str, edad: int, tutor: str, semestre: int) -> None:
+        self._c.table("alumnos").update({"edad": edad, "tutor": tutor, "semestre": semestre}).eq("id", alumno_id).execute()
+
     # --- avance en los tests (modules.avance.RepositorioAvance) ---
 
     def obtener_progreso(self, alumno_id: str) -> dict[str, ProgresoTest]:

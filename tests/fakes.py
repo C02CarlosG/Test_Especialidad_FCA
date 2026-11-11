@@ -54,6 +54,11 @@ class FakeRepo:
         self.alumnos[matricula] = a
         return a
 
+    def actualizar_datos(self, alumno_id, edad, tutor, semestre):
+        for m, a in self.alumnos.items():
+            if a.id == alumno_id:
+                self.alumnos[m] = replace(a, edad=edad, tutor=tutor, semestre=semestre)
+
     # --- avance ---
     def obtener_progreso(self, alumno_id):
         return {t: p for (a, t), p in self.progreso.items() if a == alumno_id}
