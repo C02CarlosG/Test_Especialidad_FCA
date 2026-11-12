@@ -63,6 +63,9 @@ seguridad por filas sin políticas públicas: nadie puede leer ni escribir con l
 > **Si la base ya existía** (instalada antes de pedir el semestre), ejecuta también [`sql/03_semestre.sql`](sql/03_semestre.sql)
 > en el SQL Editor **antes de desplegar**: agrega la columna `semestre`. Sin ella, el registro falla. Es seguro repetirlo.
 
+> **Correo y envío del reporte.** Ejecuta también [`sql/06_correo_y_envio_reporte.sql`](sql/06_correo_y_envio_reporte.sql)
+> **antes de desplegar**: agrega el correo del alumno y el estado del envío. Sin él, el registro y el panel fallan.
+
 **2. Secretos.** Copia la plantilla y llena los valores (el archivo real está en `.gitignore`):
 
 ```bash
@@ -158,10 +161,23 @@ casos recalculados en LibreOffice (`scripts/generar_golden_scoring.py`, `tests/g
 | **Durante** | En `/admin → Avance` ves quién va en qué test. «Actualizar datos» recarga la tabla. |
 | **Después** | Descarga el **Excel concentrado**: su hoja «Respuestas» respalda toda la base. Entrega a cada alumno su PDF (o el ZIP) y, si quieres, pulsa «Guardar los resultados» para copiarlos a la tabla `resultados`. |
 
+## Envío automático del reporte por correo
+
+Al terminar el último test, el alumno recibe su PDF en el correo que escribió al registrarse (lo pide dos veces para
+evitar errores). El envío usa SMTP desde una cuenta de Gmail creada para esto; configúrala en la sección `[correo]`
+de los secretos (ver `.streamlit/secrets.toml.example`: verificación en dos pasos y *contraseña de aplicación*).
+
+- **Sin la sección `[correo]`** el envío queda desactivado; el alumno igual descarga su PDF.
+- **Si `MOSTRAR_RESULTADO_AL_ALUMNO` es `false`** no se envía al terminar: la coordinación lo hace desde `/admin`.
+- **Estado por alumno** (`pendiente`, `enviando`, `enviado`, `error`): se ve bajo su nombre en `/admin`. El botón
+  **Enviar reportes pendientes** reintenta los fallidos y envía los que faltan. Un reporte no sale dos veces.
+- **«Rehacer el Test N»** devuelve el envío a `pendiente`: el PDF nuevo se manda al terminar de nuevo.
+- Los alumnos que terminaron antes de pedir el correo aparecen como «Sin correo» y no reciben envío.
+
 ## Privacidad y datos personales
 
 - **Qué se guarda:** apellidos, nombre(s), matrícula, semestre, edad, tutor, fecha y hora de aceptación del aviso, y las
-  respuestas a los tests. **No se pide correo.** Para limitar intentos fallidos se guarda un *hash* de la IP del
+  respuestas a los tests. **El correo se pide solo para enviarle su reporte en PDF** (ver abajo). Para limitar intentos fallidos se guarda un *hash* de la IP del
   equipo (no la IP), que es seudonimización, no anonimato.
 - **Quién accede:** solo el docente con la contraseña del panel. Las tablas tienen seguridad por filas activa y
   sin políticas públicas; la clave de servidor vive únicamente en los secretos de Streamlit.
@@ -203,7 +219,7 @@ views/                  pantallas: alumno.py, test.py, informe.py (hoja de resul
 modules/                lógica: acceso, avance, scoring, interpretacion, graficas, panel, reports, reports_admin, admin_auth,
                         security, qr_utils, config_loader, db (única capa que habla con Supabase)
 config/                 aviso_privacidad.md y tests/*.xlsx
-sql/                    01_esquema.sql, 02_rls.sql, 03_semestre.sql y 04_alumnos_autorizados.sql
+sql/                    01_esquema.sql, 02_rls.sql, 03_semestre.sql, 04_alumnos_autorizados.sql, 05 y 06
 static/                 logos y tipografías, servidos con enableStaticServing
 scripts/                conversión de las calculadoras y generación de los casos de verificación
 tests/                  pruebas automáticas (golden/ = casos calculados con las hojas de Excel)

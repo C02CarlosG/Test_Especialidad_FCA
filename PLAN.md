@@ -96,6 +96,10 @@ Revisar el PDF resultante y ajustar las descripciones de cada especialidad.
 
 ## Actualización: registro sin código de grupo
 - El registro pide apellido paterno, apellido materno, nombre(s), matrícula, edad (>= 18), nombre del tutor/orientador y la aceptación del aviso de privacidad; la fecha de aplicación se llena sola. Ya no se pide correo.
+
+## Actualización: correo y envío automático del reporte
+- El registro vuelve a pedir el correo (con confirmación) **solo** para enviar al alumno su PDF al terminar el último test. Diseño: `docs/superpowers/specs/2026-11-12-envio-reportes-pdf-design.md`; plan: `docs/superpowers/plans/2026-11-12-envio-reportes-pdf.md`.
+- Envío por SMTP (cuenta de Gmail dedicada, secretos `[correo]`), con estado por alumno (`pendiente | enviando | enviado | error`), reserva atómica para no duplicar y botón de reenvío en `/admin`. Migración `sql/06_correo_y_envio_reporte.sql`.
 - **No hay código de grupo ni lista de matrículas autorizadas:** entra cualquier matrícula con formato válido. Se quitan la tabla `grupos`, `tests_habilitados` y la expiración; todos los alumnos contestan todos los tests. Riesgo aceptado: quien tenga el QR puede registrarse con datos inventados.
 - Una matrícula se registra una sola vez. Si sigue "en_curso", se reanuda con la misma matrícula y el mismo nombre; entrar con una matrícula ajena cuenta como intento fallido (5 por matrícula y 100 por IP, cada 15 min).
 - Los reportes "por grupo" de las Fases 4 y 5 quedan por definir (por ejemplo, por tutor o por fecha de aplicación).
