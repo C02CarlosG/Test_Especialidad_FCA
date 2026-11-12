@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from fakes import FakeRepo, alumno
-from modules import envio
 from modules.envio import (ConfigCorreo, EnvioError, config_desde, enviar_pendientes,
                            enviar_reporte, entregar_reporte, pendientes_de_envio)
 from modules.panel import FilaAlumno
@@ -14,48 +13,6 @@ AHORA = datetime(2026, 11, 12, 18, 0, tzinfo=timezone.utc)
 PDF = b"%PDF-1.4 falso"
 CLAVE = "S3creta!"
 CONFIG = ConfigCorreo("smtp.test", 465, "reportes@test.mx", CLAVE, "reportes@test.mx")
-
-
-class FakeSMTP:
-    """Reemplaza a smtplib.SMTP / SMTP_SSL: registra qué se hizo y puede fallar a pedido."""
-    instancias: list = []
-    mensajes: list = []
-    falla: Exception | None = None
-    falla_para: set = set()
-
-    def __init__(self, host, port, timeout=None, *, tipo="plain"):
-        self.host, self.port, self.timeout, self.tipo = host, port, timeout, tipo
-        self.starttls_llamado, self.login_args = False, None
-        FakeSMTP.instancias.append(self)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-    def starttls(self):
-        self.starttls_llamado = True
-
-    def login(self, usuario, contrasena):
-        self.login_args = (usuario, contrasena)
-        if FakeSMTP.falla and isinstance(FakeSMTP.falla, smtplib.SMTPAuthenticationError):
-            raise FakeSMTP.falla
-
-    def send_message(self, msg):
-        if FakeSMTP.falla and not isinstance(FakeSMTP.falla, smtplib.SMTPAuthenticationError):
-            raise FakeSMTP.falla
-        if msg["To"] in FakeSMTP.falla_para:
-            raise smtplib.SMTPRecipientsRefused({msg["To"]: (550, b"no existe")})
-        FakeSMTP.mensajes.append(msg)
-
-
-@pytest.fixture
-def smtp(monkeypatch):
-    FakeSMTP.instancias, FakeSMTP.mensajes, FakeSMTP.falla, FakeSMTP.falla_para = [], [], None, set()
-    monkeypatch.setattr(envio.smtplib, "SMTP", lambda h, p, timeout=None: FakeSMTP(h, p, timeout))
-    monkeypatch.setattr(envio.smtplib, "SMTP_SSL", lambda h, p, timeout=None: FakeSMTP(h, p, timeout, tipo="ssl"))
-    return FakeSMTP
 
 
 def con_correo(matricula="123456", correo="ana@mail.com", estado="terminado", **kw):

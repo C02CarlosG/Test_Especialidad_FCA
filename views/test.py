@@ -19,6 +19,7 @@ from modules.avance import (AvanceError, Posicion, RepositorioAvance, calcular_p
 from modules.config_loader import TestConfig
 from modules.institucion import APP
 from modules.interpretacion import construir as construir_informe
+from modules.envio import ConfigCorreo, entregar_reporte
 from modules.reports import AVISO, grafica_radar, pdf_individual, vista_conjunta
 from modules.resultados import resultados_del_alumno
 from modules.scoring import ResultadoTest
@@ -115,7 +116,15 @@ def _mostrar_resultados(alumno: Alumno, tests: Sequence[TestConfig], resultados:
     _descargas(alumno, archivos)
 
 
-def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool) -> None:
+def _avisar_envio(alumno: Alumno, estado: str | None) -> None:
+    if estado == "enviado":
+        st.info(f"Te enviamos tu reporte a {alumno.correo}. Revisa también la carpeta de spam.")
+    elif estado == "error":
+        st.warning("No pudimos enviarte el correo; tu tutor podrá reenviártelo. Puedes descargar tu PDF aquí.")
+
+
+def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], mostrar: bool,
+         correo: ConfigCorreo | None = None) -> None:
     tema.cabecera(tests, len(tests) + 1)
     st.title(APP)
     st.success("¡Terminaste! Tus respuestas quedaron guardadas.")
@@ -137,14 +146,17 @@ def _fin(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig], m
             st.button("Reintentar", type="primary")  # al pulsarlo, Streamlit vuelve a ejecutar esta pantalla
             return
         archivos.update(resultados=resultados, pdf=pdf)
+    if correo is not None and "envio" not in archivos:  # una sola vez por sesión; la reserva en la BD cubre varias pestañas
+        archivos["envio"] = entregar_reporte(repo, alumno, lambda: archivos["pdf"], correo)
+    _avisar_envio(alumno, archivos.get("envio"))
     _mostrar_resultados(alumno, tests, archivos["resultados"], archivos)
 
 
 def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig],
-           mostrar_resultados: bool = True) -> None:
+           mostrar_resultados: bool = True, correo: ConfigCorreo | None = None) -> None:
     if mostrar_resultados and "pdf" in st.session_state.get(f"archivos-{alumno.id}", {}):
         # Ya terminó y sus resultados están en memoria: no hace falta consultar la BD en cada rerun.
-        _fin(repo, alumno, tests, mostrar_resultados)
+        _fin(repo, alumno, tests, mostrar_resultados, correo)
         return
     try:
         pos = calcular_posicion(repo, alumno, tests)
@@ -157,7 +169,7 @@ def render(repo: RepositorioAvance, alumno: Alumno, tests: Sequence[TestConfig],
         st.button("Reintentar", type="primary")
         return
     if pos is None:
-        _fin(repo, alumno, tests, mostrar_resultados)
+        _fin(repo, alumno, tests, mostrar_resultados, correo)
         return
 
     if st.session_state.pop("reanudado", False):

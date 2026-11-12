@@ -260,3 +260,76 @@ def test_registro_con_correo_guarda_al_alumno_normalizado():
     at = _llenar(_nuevo(), correo=" Ana@Mail.COM ", correo2="ana@mail.com")
     assert not at.exception and not at.error
     assert at.session_state["repo"].alumnos["123456"].correo == "ana@mail.com"
+
+
+# --- envío del reporte por correo al terminar ---
+
+def _app_correo():
+    import streamlit as st
+    from fakes import FakeRepo, crear_test
+    from modules.envio import ConfigCorreo
+    from views import alumno
+
+    if "repo" not in st.session_state:
+        st.session_state["repo"] = FakeRepo()
+    tests = (crear_test("t1", 12, titulo="Test Uno"),
+             crear_test("t2", 10, titulo="Test Dos", se="Sin experiencia", escala=(0, 4)))
+    cfg = ConfigCorreo("smtp.test", 465, "r@test.mx", "S3creta!", "r@test.mx") \
+        if st.session_state.get("con_config", True) else None
+    alumno.render(st.session_state["repo"], tests, "Aviso", "203.0.113.9",
+                  st.session_state.get("mostrar", True), cfg)
+
+
+def _terminar(**estado):
+    at = AppTest.from_function(_app_correo, default_timeout=30)
+    for k, v in estado.items():
+        at.session_state[k] = v
+    _llenar(at.run())
+    _contestar_todo(at, "3").button[0].click().run()
+    _contestar_todo(at, "3").button[0].click().run()
+    _contestar_todo(at, "SE").button[0].click().run()
+    return at
+
+
+def _textos(at):
+    return [x.value for x in (*at.info, *at.warning, *at.error)]
+
+
+def test_al_terminar_se_envia_el_reporte_y_se_avisa(smtp):
+    at = _terminar()
+    assert not at.exception
+    assert len(smtp.mensajes) == 1 and smtp.mensajes[0]["To"] == "ana@mail.com"
+    assert at.session_state["repo"].alumnos["123456"].reporte_estado == "enviado"
+    avisos = " ".join(_textos(at))
+    assert "Te enviamos tu reporte a ana@mail.com" in avisos and "spam" in avisos
+
+
+def test_rerun_no_envia_dos_veces(smtp):
+    at = _terminar()
+    at.run()
+    at.run()
+    assert len(smtp.mensajes) == 1
+
+
+def test_si_el_envio_falla_igual_ve_sus_resultados(smtp):
+    smtp.falla = OSError("caído")
+    at = _terminar()
+    assert not at.exception
+    assert [b.proto.label for b in at.get("download_button")] == ["Descargar PDF"]
+    assert any("No pudimos enviarte el correo" in t for t in _textos(at))
+    repo_alumno = at.session_state["repo"].alumnos["123456"]
+    assert repo_alumno.reporte_estado == "error" and "S3creta!" not in repo_alumno.reporte_error
+    assert "S3creta!" not in " ".join(_textos(at))
+
+
+def test_sin_configuracion_de_correo_no_envia_ni_avisa_error(smtp):
+    at = _terminar(con_config=False)
+    assert not at.exception and smtp.mensajes == []
+    assert at.session_state["repo"].alumnos["123456"].reporte_estado == "pendiente"
+    assert not any("correo" in t.lower() for t in _textos(at))
+
+
+def test_si_no_se_muestran_resultados_no_se_envia(smtp):
+    at = _terminar(mostrar=False)
+    assert not at.exception and smtp.mensajes == []
+    assert at.session_state["repo"].alumnos["123456"].reporte_estado == "pendiente"

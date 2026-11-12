@@ -1,4 +1,5 @@
 """Repositorio en memoria para probar el flujo de acceso sin Supabase."""
+import smtplib
 from datetime import datetime, timezone
 from itertools import count
 
@@ -149,3 +150,37 @@ def crear_test(id, n_preguntas, por_bloque=10, se=None, version="v1", escala=(1,
                       for i in range(1, n_preguntas + 1))
     esc = tuple(OpcionEscala(v, str(v)) for v in range(escala[0], escala[1] + 1))
     return TestConfig(id, titulo or id, esp, preguntas, esc, version, sin_experiencia=se)
+
+
+class FakeSMTP:
+    """Reemplaza a smtplib.SMTP / SMTP_SSL: registra qué se hizo y puede fallar a pedido."""
+    instancias: list = []
+    mensajes: list = []
+    falla: Exception | None = None
+    falla_para: set = set()
+
+    def __init__(self, host, port, timeout=None, *, tipo="plain"):
+        self.host, self.port, self.timeout, self.tipo = host, port, timeout, tipo
+        self.starttls_llamado, self.login_args = False, None
+        FakeSMTP.instancias.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def starttls(self):
+        self.starttls_llamado = True
+
+    def login(self, usuario, contrasena):
+        self.login_args = (usuario, contrasena)
+        if FakeSMTP.falla and isinstance(FakeSMTP.falla, smtplib.SMTPAuthenticationError):
+            raise FakeSMTP.falla
+
+    def send_message(self, msg):
+        if FakeSMTP.falla and not isinstance(FakeSMTP.falla, smtplib.SMTPAuthenticationError):
+            raise FakeSMTP.falla
+        if msg["To"] in FakeSMTP.falla_para:
+            raise smtplib.SMTPRecipientsRefused({msg["To"]: (550, b"no existe")})
+        FakeSMTP.mensajes.append(msg)
