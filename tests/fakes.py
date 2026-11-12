@@ -23,6 +23,7 @@ class FakeRepo:
         self.respuestas: dict[tuple[str, str], dict] = {}
         self.resultados_guardados: list = []
         self.reinicios: list = []
+        self.reservas: dict = {}  # alumno_id -> cuándo se tomó la reserva del envío
         self.carrera = False  # simula que otro envío gana la matrícula justo antes de insertar
 
     def contar_intentos(self, tipo, clave, desde):
@@ -81,6 +82,29 @@ class FakeRepo:
             if a.id == alumno_id:
                 self.alumnos[m] = replace(a, estado="terminado")
 
+    # --- envío del reporte por correo ---
+    def _cambiar(self, alumno_id, **campos):
+        for m, a in self.alumnos.items():
+            if a.id == alumno_id:
+                self.alumnos[m] = replace(a, **campos)
+
+    def reservar_envio(self, alumno_id, ahora, vencido_antes):
+        a = next((x for x in self.alumnos.values() if x.id == alumno_id), None)
+        if a is None:
+            return False
+        libre = a.reporte_estado in ("pendiente", "error") or (
+            a.reporte_estado == "enviando" and self.reservas.get(alumno_id, ahora) < vencido_antes)
+        if libre:
+            self._cambiar(alumno_id, reporte_estado="enviando")
+            self.reservas[alumno_id] = ahora
+        return libre
+
+    def marcar_enviado(self, alumno_id, ahora):
+        self._cambiar(alumno_id, reporte_estado="enviado", reporte_error=None)
+
+    def marcar_error(self, alumno_id, motivo):
+        self._cambiar(alumno_id, reporte_estado="error", reporte_error=motivo)
+
     # --- panel del docente ---
     def listar_alumnos(self):
         return list(self.alumnos.values())
@@ -96,9 +120,8 @@ class FakeRepo:
         for t in test_ids:
             self.progreso.pop((alumno_id, t), None)
             self.respuestas.pop((alumno_id, t), None)
-        for m, a in self.alumnos.items():
-            if a.id == alumno_id:
-                self.alumnos[m] = replace(a, estado="en_curso")
+        self.reservas.pop(alumno_id, None)
+        self._cambiar(alumno_id, estado="en_curso", reporte_estado="pendiente", reporte_error=None)
 
     def obtener_progreso_todos(self):
         por_alumno = {}

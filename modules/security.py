@@ -28,6 +28,10 @@ def normalizar_correo(valor: str) -> str:
     return valor.strip().lower()
 
 
+def correo_valido(correo: str) -> bool:
+    return len(correo) <= CORREO_MAX and bool(_RE_CORREO.fullmatch(correo))
+
+
 EDAD_MINIMA = 18
 EDAD_MAXIMA = 99
 SEMESTRE_MINIMO = 1
@@ -88,7 +92,7 @@ def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
         errores["semestre"] = "Elige tu semestre."
     if not _nombre_ok(str(v["tutor"])):
         errores["tutor"] = "Escribe el nombre de tu tutor u orientador."
-    if len(str(v["correo"])) > CORREO_MAX or not _RE_CORREO.fullmatch(str(v["correo"])):
+    if not correo_valido(str(v["correo"])):
         errores["correo"] = "Escribe un correo válido, por ejemplo nombre@dominio.com."
     elif v["correo"] != normalizar_correo(correo_confirmacion):
         errores["correo"] = "Los correos no coinciden."

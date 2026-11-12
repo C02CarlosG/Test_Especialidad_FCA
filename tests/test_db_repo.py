@@ -51,3 +51,47 @@ def test_actualizar_datos_envia_edad_tutor_semestre_y_correo():
     actualizar = tabla.return_value.update
     actualizar.assert_called_once_with({"edad": 21, "tutor": "Mtra. Gómez", "semestre": 6, "correo": "a@b.com"})
     actualizar.return_value.eq.assert_called_once_with("id", "id1")
+
+
+def _cliente_reserva(filas):
+    cliente = MagicMock()
+    cliente.table.return_value.update.return_value.eq.return_value.or_.return_value.execute.return_value.data = filas
+    return cliente
+
+
+def test_reservar_envio_filtra_por_estado_y_devuelve_true_si_tomo_la_fila():
+    cliente = _cliente_reserva([{"id": "x"}])
+    ahora = datetime(2026, 11, 12, 18, 0, tzinfo=timezone.utc)
+    vencido = datetime(2026, 11, 12, 17, 50, tzinfo=timezone.utc)
+    assert SupabaseRepo(cliente).reservar_envio("x", ahora, vencido) is True
+    update = cliente.table.return_value.update
+    assert update.call_args.args[0] == {"reporte_estado": "enviando", "reporte_reservado_en": ahora.isoformat()}
+    cliente.table.return_value.update.return_value.eq.assert_called_once_with("id", "x")
+    filtro = cliente.table.return_value.update.return_value.eq.return_value.or_.call_args.args[0]
+    assert "reporte_estado.in.(pendiente,error)" in filtro
+    assert f"reporte_reservado_en.lt.{vencido.isoformat()}" in filtro
+
+
+def test_reservar_envio_devuelve_false_si_otro_ya_lo_tomo():
+    assert SupabaseRepo(_cliente_reserva([])).reservar_envio(
+        "x", datetime.now(timezone.utc), datetime.now(timezone.utc)) is False
+
+
+def test_marcar_enviado_y_marcar_error_actualizan_el_estado():
+    cliente = MagicMock()
+    ahora = datetime(2026, 11, 12, 18, 0, tzinfo=timezone.utc)
+    repo = SupabaseRepo(cliente)
+    repo.marcar_enviado("x", ahora)
+    cliente.table.return_value.update.assert_called_with(
+        {"reporte_estado": "enviado", "reporte_enviado_en": ahora.isoformat(), "reporte_error": None})
+    repo.marcar_error("x", "No se pudo conectar con el servidor de correo.")
+    cliente.table.return_value.update.assert_called_with(
+        {"reporte_estado": "error", "reporte_error": "No se pudo conectar con el servidor de correo."})
+
+
+def test_reiniciar_alumno_devuelve_el_reporte_a_pendiente():
+    cliente = MagicMock()
+    SupabaseRepo(cliente).reiniciar_alumno("x", ["t1"], False)
+    cliente.table.return_value.update.assert_called_once_with(
+        {"estado": "en_curso", "reporte_estado": "pendiente", "reporte_enviado_en": None,
+         "reporte_reservado_en": None, "reporte_error": None})

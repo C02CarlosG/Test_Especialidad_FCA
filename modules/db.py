@@ -106,6 +106,24 @@ class SupabaseRepo:
         self._c.table("alumnos").update({"edad": edad, "tutor": tutor, "semestre": semestre,
                                          "correo": correo}).eq("id", alumno_id).execute()
 
+    # --- envío del reporte por correo (modules.envio.RepositorioEnvio) ---
+
+    def reservar_envio(self, alumno_id: str, ahora: datetime, vencido_antes: datetime) -> bool:
+        """Toma el envío de forma atómica: solo si está pendiente, con error, o en curso pero con la reserva vencida."""
+        filtro = (f"reporte_estado.in.(pendiente,error),"
+                  f"and(reporte_estado.eq.enviando,reporte_reservado_en.lt.{vencido_antes.isoformat()})")
+        r = (self._c.table("alumnos")
+             .update({"reporte_estado": "enviando", "reporte_reservado_en": ahora.isoformat()})
+             .eq("id", alumno_id).or_(filtro).execute())
+        return bool(r.data)
+
+    def marcar_enviado(self, alumno_id: str, ahora: datetime) -> None:
+        self._c.table("alumnos").update({"reporte_estado": "enviado", "reporte_enviado_en": ahora.isoformat(),
+                                         "reporte_error": None}).eq("id", alumno_id).execute()
+
+    def marcar_error(self, alumno_id: str, motivo: str) -> None:
+        self._c.table("alumnos").update({"reporte_estado": "error", "reporte_error": motivo}).eq("id", alumno_id).execute()
+
     # --- avance en los tests (modules.avance.RepositorioAvance) ---
 
     def obtener_progreso(self, alumno_id: str) -> dict[str, ProgresoTest]:
@@ -166,7 +184,9 @@ class SupabaseRepo:
             return
         for tabla in ("respuestas", "progreso_tests", "resultados"):
             self._c.table(tabla).delete().eq("alumno_id", alumno_id).in_("test_id", list(test_ids)).execute()
-        self._c.table("alumnos").update({"estado": "en_curso"}).eq("id", alumno_id).execute()
+        self._c.table("alumnos").update({
+            "estado": "en_curso", "reporte_estado": "pendiente", "reporte_enviado_en": None,
+            "reporte_reservado_en": None, "reporte_error": None}).eq("id", alumno_id).execute()
 
     def obtener_progreso_todos(self) -> dict[str, dict[str, ProgresoTest]]:
         por_alumno: dict[str, dict[str, ProgresoTest]] = {}
