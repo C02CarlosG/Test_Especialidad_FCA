@@ -86,6 +86,10 @@ def _registro(repo: Repositorio, tests: Sequence, aviso_md: str, cliente_ip: str
         tutor = c7.text_input("Nombre del tutor / orientador *", max_chars=80)
         c8.text_input("Fecha de aplicación", value=datetime.now(ZONA).strftime("%d/%m/%Y"),
                       disabled=True)
+        c9, c10 = st.columns(2)
+        correo = c9.text_input("Correo electrónico *", max_chars=254, autocomplete="email", key="reg_correo",
+                               help="Aquí te llegará tu reporte en PDF al terminar.")
+        correo2 = c10.text_input("Confirma tu correo *", max_chars=254, key="reg_correo2")
         with st.container(border=True, height=320):  # el aviso es largo: se desplaza dentro de su caja
             st.markdown(aviso_md)
             acepto = st.checkbox("Acepto el aviso de privacidad y declaro ser mayor de edad.")
@@ -95,7 +99,8 @@ def _registro(repo: Repositorio, tests: Sequence, aviso_md: str, cliente_ip: str
         return
     datos = DatosAcceso(paterno, materno, nombres, matricula,
                         int(edad) if edad is not None else None, tutor, acepto,
-                        semestre=int(semestre) if semestre is not None else None)
+                        semestre=int(semestre) if semestre is not None else None,
+                        correo=correo, correo_confirmacion=correo2)
     try:
         res = iniciar_acceso(repo, datos, cliente_ip)
     except DatosInvalidos as exc:

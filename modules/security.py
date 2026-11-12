@@ -20,6 +20,14 @@ def matricula_valida(matricula: str) -> bool:
     return bool(_RE_MATRICULA.fullmatch(matricula))
 
 
+CORREO_MAX = 254
+_RE_CORREO = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+def normalizar_correo(valor: str) -> str:
+    return valor.strip().lower()
+
+
 EDAD_MINIMA = 18
 EDAD_MAXIMA = 99
 SEMESTRE_MINIMO = 1
@@ -48,7 +56,8 @@ def _nombre_ok(valor: str) -> bool:
 
 
 def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
-                  matricula: str, edad: int | None, tutor: str, semestre: int | None = None
+                  matricula: str, edad: int | None, tutor: str, semestre: int | None = None,
+                  *, correo: str, correo_confirmacion: str
                   ) -> tuple[dict[str, str | int], dict[str, str]]:
     """Devuelve (valores normalizados, errores por campo). Sin errores = dict vacío."""
     v: dict[str, str | int] = {
@@ -59,6 +68,7 @@ def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
         "tutor": normalizar_texto(tutor),
         "edad": edad if edad is not None else 0,
         "semestre": semestre if semestre is not None else 0,
+        "correo": normalizar_correo(correo),
     }
     errores: dict[str, str] = {}
     for campo, etiqueta in (("apellido_paterno", "el apellido paterno"),
@@ -78,6 +88,10 @@ def validar_datos(apellido_paterno: str, apellido_materno: str, nombres: str,
         errores["semestre"] = "Elige tu semestre."
     if not _nombre_ok(str(v["tutor"])):
         errores["tutor"] = "Escribe el nombre de tu tutor u orientador."
+    if len(str(v["correo"])) > CORREO_MAX or not _RE_CORREO.fullmatch(str(v["correo"])):
+        errores["correo"] = "Escribe un correo válido, por ejemplo nombre@dominio.com."
+    elif v["correo"] != normalizar_correo(correo_confirmacion):
+        errores["correo"] = "Los correos no coinciden."
     return v, errores
 
 

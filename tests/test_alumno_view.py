@@ -31,7 +31,8 @@ def _nuevo():
     return AppTest.from_function(_app, default_timeout=30).run()
 
 
-def _llenar(at, matricula="123456", edad=20, acepto=True, nombres="Ana María", semestre=5):
+def _llenar(at, matricula="123456", edad=20, acepto=True, nombres="Ana María", semestre=5,
+            correo="ana@mail.com", correo2=None):
     # La matrícula (text_input[0]) llena los demás campos al escribirse: primero se corre, luego se corrigen.
     at.text_input[0].input(matricula).run()
     at.text_input[1].input("Pérez")
@@ -40,6 +41,8 @@ def _llenar(at, matricula="123456", edad=20, acepto=True, nombres="Ana María", 
     at.selectbox[0].set_value(semestre)
     at.number_input[0].set_value(edad)
     at.text_input[4].input("Mtro. Ruiz")  # text_input[5] es la fecha (deshabilitada)
+    at.text_input[6].input(correo)
+    at.text_input[7].input(correo if correo2 is None else correo2)
     if acepto:
         at.checkbox[0].check()
     at.button[0].click().run()
@@ -198,6 +201,8 @@ def test_sin_semestre_no_registra():
     at.selectbox[0].set_value(None)  # la matrícula de la lista ya había puesto el 5.º
     at.number_input[0].set_value(20)
     at.text_input[4].input("Mtro. Ruiz")
+    at.text_input[6].input("ana@mail.com")
+    at.text_input[7].input("ana@mail.com")
     at.checkbox[0].check()
     at.button[0].click().run()
     assert "Elige tu semestre" in at.error[0].value and not at.radio
@@ -238,3 +243,20 @@ def test_cambiar_a_una_matricula_ajena_borra_los_datos_cargados():
     at.text_input[0].input("177195").run()
     at.text_input[0].input("999999").run()
     assert [t.value for t in at.text_input[1:4]] == ["", "", ""]
+
+
+def test_el_registro_pide_correo_y_confirmacion():
+    etiquetas = [t.label for t in _nuevo().text_input]
+    assert "Correo electrónico *" in etiquetas and "Confirma tu correo *" in etiquetas
+
+
+def test_correos_distintos_muestran_error_y_no_registran():
+    at = _llenar(_nuevo(), correo="ana@mail.com", correo2="ana@otro.com")
+    assert any("Los correos no coinciden." in e.value for e in at.error)
+    assert not at.radio and at.session_state["repo"].alumnos == {}
+
+
+def test_registro_con_correo_guarda_al_alumno_normalizado():
+    at = _llenar(_nuevo(), correo=" Ana@Mail.COM ", correo2="ana@mail.com")
+    assert not at.exception and not at.error
+    assert at.session_state["repo"].alumnos["123456"].correo == "ana@mail.com"

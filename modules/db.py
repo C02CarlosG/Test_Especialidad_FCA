@@ -41,14 +41,17 @@ def _alumno(fila: dict[str, Any]) -> Alumno:
     return Alumno(id=fila["id"], apellido_paterno=fila["apellido_paterno"],
                   apellido_materno=fila["apellido_materno"], nombres=fila["nombres"],
                   matricula=fila["matricula"], edad=fila["edad"], tutor=fila["tutor"],
-                  estado=fila["estado"], creado_en=_fecha(fila.get("creado_en")), semestre=fila.get("semestre"))
+                  estado=fila["estado"], creado_en=_fecha(fila.get("creado_en")), semestre=fila.get("semestre"),
+                  correo=fila.get("correo"), reporte_estado=fila.get("reporte_estado") or "pendiente",
+                  reporte_error=fila.get("reporte_error"))
 
 
 def _fecha(valor: str | None) -> datetime | None:
     return datetime.fromisoformat(valor) if valor else None
 
 
-_COLS_ALUMNO = "id,apellido_paterno,apellido_materno,nombres,matricula,edad,tutor,semestre,estado"
+_COLS_ALUMNO = ("id,apellido_paterno,apellido_materno,nombres,matricula,edad,tutor,semestre,estado,"
+                "correo,reporte_estado,reporte_error")
 
 
 class SupabaseRepo:
@@ -85,12 +88,12 @@ class SupabaseRepo:
 
     def crear_alumno(self, apellido_paterno: str, apellido_materno: str, nombres: str,
                      matricula: str, edad: int, tutor: str,
-                     acepto_en: datetime, semestre: int | None = None) -> Alumno:
+                     acepto_en: datetime, semestre: int | None = None, correo: str | None = None) -> Alumno:
         try:
             r = self._c.table("alumnos").insert({
                 "apellido_paterno": apellido_paterno, "apellido_materno": apellido_materno,
                 "nombres": nombres, "matricula": matricula, "edad": edad, "tutor": tutor, "semestre": semestre,
-                "acepto_privacidad": True,
+                "correo": correo, "acepto_privacidad": True,
                 "acepto_en": acepto_en.isoformat(),
             }).execute()
         except APIError as exc:
@@ -99,8 +102,9 @@ class SupabaseRepo:
             raise
         return _alumno(r.data[0])
 
-    def actualizar_datos(self, alumno_id: str, edad: int, tutor: str, semestre: int) -> None:
-        self._c.table("alumnos").update({"edad": edad, "tutor": tutor, "semestre": semestre}).eq("id", alumno_id).execute()
+    def actualizar_datos(self, alumno_id: str, edad: int, tutor: str, semestre: int, correo: str) -> None:
+        self._c.table("alumnos").update({"edad": edad, "tutor": tutor, "semestre": semestre,
+                                         "correo": correo}).eq("id", alumno_id).execute()
 
     # --- avance en los tests (modules.avance.RepositorioAvance) ---
 

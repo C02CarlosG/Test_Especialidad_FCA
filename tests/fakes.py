@@ -46,18 +46,18 @@ class FakeRepo:
         return self.alumnos.get(matricula)
 
     def crear_alumno(self, apellido_paterno, apellido_materno, nombres, matricula, edad, tutor,
-                     acepto_en, semestre=None):
+                     acepto_en, semestre=None, correo=None):
         if self.carrera or matricula in self.alumnos:
             raise MatriculaDuplicada()
         a = Alumno(f"a{next(self._ids)}", apellido_paterno, apellido_materno, nombres,
-                   matricula, edad, tutor, "en_curso", semestre=semestre)
+                   matricula, edad, tutor, "en_curso", semestre=semestre, correo=correo)
         self.alumnos[matricula] = a
         return a
 
-    def actualizar_datos(self, alumno_id, edad, tutor, semestre):
+    def actualizar_datos(self, alumno_id, edad, tutor, semestre, correo):
         for m, a in self.alumnos.items():
             if a.id == alumno_id:
-                self.alumnos[m] = replace(a, edad=edad, tutor=tutor, semestre=semestre)
+                self.alumnos[m] = replace(a, edad=edad, tutor=tutor, semestre=semestre, correo=correo)
 
     # --- avance ---
     def obtener_progreso(self, alumno_id):

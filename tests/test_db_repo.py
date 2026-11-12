@@ -36,18 +36,18 @@ def test_crear_alumno_envia_aceptacion_de_privacidad():
             "matricula": "M1", "edad": 20, "tutor": "T", "estado": "en_curso"}
     cliente = _ejecuta(data=[fila])
     ahora = datetime(2026, 10, 14, tzinfo=timezone.utc)
-    a = SupabaseRepo(cliente).crear_alumno("P", "M", "N", "M1", 20, "T", ahora)
+    a = SupabaseRepo(cliente).crear_alumno("P", "M", "N", "M1", 20, "T", ahora, correo="a@b.com")
     enviado = cliente.table.return_value.insert.call_args.args[0]
     assert enviado["acepto_privacidad"] is True and enviado["acepto_en"] == ahora.isoformat()
-    assert enviado["edad"] == 20 and enviado["tutor"] == "T" and "correo" not in enviado
+    assert enviado["edad"] == 20 and enviado["tutor"] == "T" and enviado["correo"] == "a@b.com"
     assert a.estado == "en_curso"
 
 
-def test_actualizar_datos_envia_edad_tutor_y_semestre():
+def test_actualizar_datos_envia_edad_tutor_semestre_y_correo():
     cliente = MagicMock()
-    SupabaseRepo(cliente).actualizar_datos("id1", 21, "Mtra. Gómez", 6)
+    SupabaseRepo(cliente).actualizar_datos("id1", 21, "Mtra. Gómez", 6, "a@b.com")
     tabla = cliente.table
     tabla.assert_called_with("alumnos")
     actualizar = tabla.return_value.update
-    actualizar.assert_called_once_with({"edad": 21, "tutor": "Mtra. Gómez", "semestre": 6})
+    actualizar.assert_called_once_with({"edad": 21, "tutor": "Mtra. Gómez", "semestre": 6, "correo": "a@b.com"})
     actualizar.return_value.eq.assert_called_once_with("id", "id1")
