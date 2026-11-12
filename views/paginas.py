@@ -44,4 +44,5 @@ def pagina_admin(cargar: Callable, secreto: Callable, cliente_ip: str) -> None:
         st.error("El panel no está disponible por un problema de configuración. "
                  "Revisa los registros de la app.")
         return
-    admin.render(repo, tests, secreto("admin", "password"), cliente_ip, secreto("app", "public_url"))
+    admin.render(repo, tests, secreto("admin", "password"), cliente_ip, secreto("app", "public_url"),
+                 config_desde(secreto))

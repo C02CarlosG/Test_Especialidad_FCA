@@ -291,3 +291,132 @@ def test_la_lista_se_pagina_y_se_puede_buscar():
     assert _matriculas(at) == [f"{100000 + i}" for i in range(40, 45)]
     next(t for t in at.text_input if t.label == "Buscar").input("apellido007").run()
     assert _matriculas(at) == ["100007"]
+
+
+# --- envío de reportes por correo ---
+
+def _repo_envio(*, correo_ana="ana@x.com", estado_ana="pendiente", error_ana=None, extra=()):
+    """Ana terminó todo (con correo y estado de envío a elección). `extra`: matrículas (correo) de más alumnos
+    que también terminaron, con las mismas respuestas que Ana."""
+    from dataclasses import replace
+    from modules.acceso import Alumno
+    from modules.avance import ProgresoTest
+    from test_panel import AHORA, TEST1, TEST2, poblar
+
+    repo = poblar()
+    repo.alumnos["100001"] = replace(repo.alumnos["100001"], correo=correo_ana, reporte_estado=estado_ana,
+                                     reporte_error=error_ana)
+    for n, (nombre, correo) in enumerate(extra, start=5):
+        a = Alumno(f"a{n}", "Pérez", "López", nombre, f"10000{n}", 20, "Mtro. Ruiz", "terminado", AHORA, correo=correo)
+        repo.alumnos[a.matricula] = a
+        for t in (TEST1, TEST2):
+            repo.progreso[(a.id, t.id)] = ProgresoTest("terminado", t.version)
+            repo.respuestas[(a.id, t.id)] = dict(repo.respuestas[("a1", t.id)])
+    return repo
+
+
+def _app_envio():
+    import streamlit as st
+    from test_panel import TEST1, TEST2
+    from views import admin
+
+    admin.render(st.session_state["repo"], (TEST1, TEST2), "una-contraseña-larga-y-unica", "203.0.113.9", None,
+                 st.session_state.get("correo"))
+
+
+def _panel_envio(repo, correo=None):
+    from modules.envio import ConfigCorreo
+    at = AppTest.from_function(_app_envio, default_timeout=90)
+    at.session_state["repo"] = repo
+    if correo:
+        at.session_state["correo"] = ConfigCorreo("smtp.test", 465, "r@test.mx", "S3creta!", "r@test.mx")
+    return _entrar(at.run())
+
+
+def _html(at):
+    return " ".join(h.value for h in at.get("html"))
+
+
+@pytest.mark.parametrize("kw,texto", [
+    (dict(estado_ana="enviado"), "Reporte enviado"),
+    (dict(estado_ana="error", error_ana="No se pudo conectar con el servidor de correo."),
+     "Reporte con error: No se pudo conectar con el servidor de correo."),
+    (dict(estado_ana="enviando"), "Enviando reporte…"),
+    (dict(estado_ana="pendiente"), "Reporte pendiente"),
+    (dict(correo_ana=None), "Sin correo"),
+])
+def test_la_fila_muestra_el_estado_del_reporte(kw, texto):
+    html = _html(_panel_envio(_repo_envio(**kw)))
+    assert texto in html
+
+
+def test_quien_no_ha_terminado_no_muestra_nada_de_reporte():
+    html = _html(_panel_envio(_repo_envio()))
+    assert html.count("Reporte") == 1 and html.count("Sin correo") == 0  # solo Ana (a1) terminó
+
+
+def test_boton_desactivado_sin_configuracion():
+    at = _panel_envio(_repo_envio())
+    assert at.button(key="enviar_pendientes").disabled
+    assert any("Falta configurar la sección [correo]" in c.value for c in at.caption)
+
+
+def test_boton_desactivado_si_no_hay_pendientes():
+    at = _panel_envio(_repo_envio(estado_ana="enviado"), correo=True)
+    assert at.button(key="enviar_pendientes").disabled
+    assert any("No hay reportes pendientes." in c.value for c in at.caption)
+
+
+def test_boton_activo_con_pendientes_y_configuracion():
+    at = _panel_envio(_repo_envio(), correo=True)
+    assert not at.button(key="enviar_pendientes").disabled and not at.exception
+
+
+def _app_dialogo_envio():
+    import streamlit as st
+    from datetime import datetime
+    from modules.envio import ConfigCorreo
+    from test_panel import TEST1, TEST2
+    from modules.panel import cargar_panel
+    from views import admin
+
+    repo = st.session_state["repo"]
+    st.session_state["panel"] = cargar_panel(repo, (TEST1, TEST2))
+    st.session_state["panel_en"] = datetime.now(admin.ZONA)
+    admin._dialogo_envio(repo, st.session_state["panel"], ConfigCorreo("smtp.test", 465, "r@test.mx", "S3creta!", "r@test.mx"))
+
+
+def _abrir_envio(repo):
+    at = AppTest.from_function(_app_dialogo_envio, default_timeout=90)
+    at.session_state["repo"] = repo
+    return at.run()
+
+
+def test_el_cuadro_de_envio_dice_cuantos_se_enviaran_y_cancelar_no_envia(smtp):
+    at = _abrir_envio(_repo_envio(extra=[("Eva", "eva@x.com")]))
+    assert any("Se enviarán 2 reportes" in m.value for m in at.markdown)
+    at.button(key="cancelar_envio").click().run()
+    assert smtp.mensajes == []
+
+
+def test_confirmar_envia_y_resume(smtp, monkeypatch):
+    monkeypatch.setattr("modules.reports.pdf_individual", lambda *a, **k: b"%PDF")
+    repo = _repo_envio(extra=[("Eva", "eva@x.com")])
+    at = _abrir_envio(repo)
+    at.button(key="confirmar_envio").click().run()
+    assert not at.exception
+    assert sorted(m["To"] for m in smtp.mensajes) == ["ana@x.com", "eva@x.com"]
+    assert at.session_state["admin_aviso"] == "Enviados: 2 · Con error: 0 · Omitidos: 0"
+    assert at.session_state["panel"].filas[0].alumno.reporte_estado == "enviado"  # el panel se recargó con los estados nuevos
+    assert {a.reporte_estado for a in repo.alumnos.values() if a.correo} == {"enviado"}
+
+
+def test_un_fallo_se_cuenta_y_no_detiene_a_los_demas(smtp, monkeypatch):
+    monkeypatch.setattr("modules.reports.pdf_individual", lambda *a, **k: b"%PDF")
+    smtp.falla_para = {"ana@x.com"}
+    repo = _repo_envio(extra=[("Eva", "eva@x.com")])
+    at = _abrir_envio(repo)
+    at.button(key="confirmar_envio").click().run()
+    assert [m["To"] for m in smtp.mensajes] == ["eva@x.com"]
+    assert at.session_state["admin_alerta"] == "Enviados: 1 · Con error: 1 · Omitidos: 0"
+    assert repo.alumnos["100001"].reporte_estado == "error"
