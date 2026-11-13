@@ -45,3 +45,14 @@ def test_alumno_con_configuracion_rota_tampoco_ve_detalles():
 def test_admin_con_configuracion_buena_pide_la_contraseña():
     at = AppTest.from_function(_admin_bien, default_timeout=60).run()
     assert not at.exception and len(at.text_input) == 1 and not at.error
+
+
+def test_pagina_alumno_lee_la_configuracion_del_correo(monkeypatch):
+    from views import alumno, paginas
+    capturado = {}
+    monkeypatch.setattr(alumno, "render", lambda *a, **k: capturado.update(a=a))
+    secretos = {("correo", "servidor"): "smtp.test", ("correo", "puerto"): 465, ("correo", "usuario"): "u@x.mx",
+                ("correo", "remitente"): "u@x.mx", ("correo", "contrasena"): "clave"}
+    paginas.pagina_alumno(lambda: ((), object()), "aviso", lambda s, k, d=None: secretos.get((s, k), d), "1.2.3.4")
+    cfg = capturado["a"][5]
+    assert cfg is not None and cfg.servidor == "smtp.test" and cfg.puerto == 465 and cfg.contrasena == "clave"

@@ -15,7 +15,7 @@ IP = "203.0.113.9"
 def datos(**kw):
     base = dict(apellido_paterno="Pérez", apellido_materno="López", nombres="Ana",
                 matricula="123456", edad=20, tutor="Mtro. Ruiz", acepto_privacidad=True,
-                semestre=5)
+                semestre=5, correo="ana@mail.com", correo_confirmacion="ana@mail.com")
     return DatosAcceso(**{**base, **kw})
 
 
@@ -201,3 +201,23 @@ def test_matricula_de_5_digitos_de_la_lista_entra_y_se_autocompleta():
     r = FakeRepo(autorizadas={"38974": "BAUTISTA CABAÑAS SALVADOR"})
     assert buscar_autorizado(r, "38974", IP, AHORA) == "BAUTISTA CABAÑAS SALVADOR"
     assert iniciar_acceso(r, datos(matricula="38974"), IP, AHORA).alumno.matricula == "38974"
+
+
+def test_el_correo_se_guarda_al_registrar():
+    r = repo()
+    res = iniciar_acceso(r, datos(correo=" Ana@Mail.com ", correo_confirmacion="ana@mail.com"), IP, AHORA)
+    assert res.alumno.correo == "ana@mail.com" and r.alumnos["123456"].correo == "ana@mail.com"
+
+
+def test_reanudar_actualiza_el_correo():
+    r = repo()
+    iniciar_acceso(r, datos(), IP, AHORA)
+    res = iniciar_acceso(r, datos(correo="nuevo@mail.com", correo_confirmacion="nuevo@mail.com"), IP, AHORA)
+    assert res.reanudado and r.alumnos["123456"].correo == "nuevo@mail.com"
+    assert res.alumno.correo == "nuevo@mail.com"
+
+
+def test_sin_correo_es_dato_invalido():
+    with pytest.raises(DatosInvalidos) as exc:
+        iniciar_acceso(repo(), datos(correo="", correo_confirmacion=""), IP, AHORA)
+    assert "correo" in exc.value.errores

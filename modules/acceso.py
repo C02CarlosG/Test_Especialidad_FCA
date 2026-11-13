@@ -28,6 +28,9 @@ class Alumno:
     estado: str  # en_curso | terminado
     creado_en: datetime | None = None  # solo lo llenan las consultas del panel del docente
     semestre: int | None = None  # None en los alumnos registrados antes de pedirlo
+    correo: str | None = None  # None en los alumnos registrados antes de pedirlo
+    reporte_estado: str = "pendiente"  # pendiente | enviando | enviado | error (envío del PDF por correo)
+    reporte_error: str | None = None
 
     @property
     def nombre_completo(self) -> str:
@@ -44,6 +47,8 @@ class DatosAcceso:
     tutor: str
     acepto_privacidad: bool
     semestre: int | None = None
+    correo: str = ""
+    correo_confirmacion: str = ""
 
 
 @dataclass(frozen=True)
@@ -63,8 +68,8 @@ class Repositorio(Protocol):
     def obtener_alumno_por_matricula(self, matricula: str) -> Alumno | None: ...
     def crear_alumno(self, apellido_paterno: str, apellido_materno: str, nombres: str,
                      matricula: str, edad: int, tutor: str, acepto_en: datetime,
-                     semestre: int | None = None) -> Alumno: ...
-    def actualizar_datos(self, alumno_id: str, edad: int, tutor: str, semestre: int) -> None: ...
+                     semestre: int | None = None, correo: str | None = None) -> Alumno: ...
+    def actualizar_datos(self, alumno_id: str, edad: int, tutor: str, semestre: int, correo: str) -> None: ...
 
 
 class AccesoError(Exception):
@@ -174,13 +179,13 @@ def buscar_autorizado(repo: Repositorio, matricula: str, cliente_ip: str,
 
 
 def _con_datos_nuevos(repo: Repositorio, existente: Alumno, v: dict[str, str | int]) -> Alumno:
-    """Al reanudar (p. ej. tras reiniciar un test) vale lo que el alumno acaba de escribir: edad, tutor y
-    semestre se actualizan si cambiaron. El nombre no, porque es lo que identifica a quien reanuda."""
-    edad, tutor, semestre = int(v["edad"]), str(v["tutor"]), int(v["semestre"])
-    if (edad, tutor, semestre) == (existente.edad, existente.tutor, existente.semestre):
+    """Al reanudar (p. ej. tras reiniciar un test) vale lo que el alumno acaba de escribir: edad, tutor,
+    semestre y correo se actualizan si cambiaron. El nombre no, porque es lo que identifica a quien reanuda."""
+    edad, tutor, semestre, correo = int(v["edad"]), str(v["tutor"]), int(v["semestre"]), str(v["correo"])
+    if (edad, tutor, semestre, correo) == (existente.edad, existente.tutor, existente.semestre, existente.correo):
         return existente
-    repo.actualizar_datos(existente.id, edad, tutor, semestre)
-    return replace(existente, edad=edad, tutor=tutor, semestre=semestre)
+    repo.actualizar_datos(existente.id, edad, tutor, semestre, correo)
+    return replace(existente, edad=edad, tutor=tutor, semestre=semestre, correo=correo)
 
 
 def iniciar_acceso(repo: Repositorio, datos: DatosAcceso, cliente_ip: str,
@@ -199,7 +204,8 @@ def iniciar_acceso(repo: Repositorio, datos: DatosAcceso, cliente_ip: str,
     if not datos.acepto_privacidad:
         raise AccesoError("Debes aceptar el aviso de privacidad para continuar.")
     v, errores = sec.validar_datos(datos.apellido_paterno, datos.apellido_materno, datos.nombres,
-                                   datos.matricula, datos.edad, datos.tutor, datos.semestre)
+                                   datos.matricula, datos.edad, datos.tutor, datos.semestre,
+                                   correo=datos.correo, correo_confirmacion=datos.correo_confirmacion)
     if errores:
         raise DatosInvalidos(errores)
 
@@ -223,7 +229,8 @@ def iniciar_acceso(repo: Repositorio, datos: DatosAcceso, cliente_ip: str,
     try:
         alumno = repo.crear_alumno(
             str(v["apellido_paterno"]), str(v["apellido_materno"]), str(v["nombres"]),
-            str(v["matricula"]), int(v["edad"]), str(v["tutor"]), ahora, semestre=int(v["semestre"]))
+            str(v["matricula"]), int(v["edad"]), str(v["tutor"]), ahora, semestre=int(v["semestre"]),
+            correo=str(v["correo"]))
     except MatriculaDuplicada:  # dos envíos simultáneos con la misma matrícula
         raise MatriculaNoDisponible() from None
     return ResultadoAcceso(alumno, reanudado=False)

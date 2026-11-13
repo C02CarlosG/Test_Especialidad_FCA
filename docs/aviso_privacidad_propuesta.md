@@ -34,7 +34,7 @@ El tratamiento de los datos personales por parte de la Universidad Autónoma “
 **Finalidades necesarias:**
 
 1. Registrar a la persona participante y reanudar su evaluación si se interrumpe.
-2. Aplicar los dos cuestionarios, calcular los resultados y generar el Reporte de Evaluación Integral (en PDF y Excel), que se entrega a la persona participante y a su tutor u orientador.
+2. Aplicar los dos cuestionarios, calcular los resultados y generar el Reporte de Evaluación Integral (en PDF y Excel), que se entrega a la persona participante y a su tutor u orientador. El PDF se envía al correo electrónico que la persona participante proporciona al registrarse.
 3. Dar seguimiento al avance de la aplicación por parte del personal docente responsable.
 
 **Finalidades secundarias:**
@@ -49,6 +49,7 @@ El tratamiento de los datos personales por parte de la Universidad Autónoma “
 Las categorías de datos personales que recaba la herramienta, a cargo del personal de la Coordinación de Tutorías y/o el Cuerpo Académico “Gestión e Innovación de las Organizaciones”, son las siguientes:
 
 - **Datos de identificación:** apellido paterno, apellido materno y nombre(s).
+- **Datos de contacto:** correo electrónico, que se usa únicamente para enviar a la persona participante su Reporte de Evaluación Integral.
 - **Datos académicos:** número de matrícula y nombre del tutor u orientador.
 - **Otros datos personales:** edad.
 - **Respuestas a los cuestionarios** y los resultados que se calculan a partir de ellas.

@@ -7,6 +7,7 @@ from typing import Callable
 
 import streamlit as st
 
+from modules.envio import config_desde
 from modules.institucion import APP
 from views import admin, alumno, tema
 
@@ -27,7 +28,7 @@ def pagina_alumno(cargar: Callable, aviso_md: str, secreto: Callable, cliente_ip
     # El alumno ve y descarga sus resultados al terminar, salvo que [app] MOSTRAR_RESULTADO_AL_ALUMNO sea false.
     mostrar = secreto("app", "MOSTRAR_RESULTADO_AL_ALUMNO", True)
     mostrar = mostrar if isinstance(mostrar, bool) else str(mostrar).strip().lower() not in ("false", "no", "0")
-    alumno.render(repo, tests, aviso_md, cliente_ip, mostrar)
+    alumno.render(repo, tests, aviso_md, cliente_ip, mostrar, config_desde(secreto))
 
 
 def pagina_admin(cargar: Callable, secreto: Callable, cliente_ip: str) -> None:
@@ -43,4 +44,5 @@ def pagina_admin(cargar: Callable, secreto: Callable, cliente_ip: str) -> None:
         st.error("El panel no está disponible por un problema de configuración. "
                  "Revisa los registros de la app.")
         return
-    admin.render(repo, tests, secreto("admin", "password"), cliente_ip, secreto("app", "public_url"))
+    admin.render(repo, tests, secreto("admin", "password"), cliente_ip, secreto("app", "public_url"),
+                 config_desde(secreto))

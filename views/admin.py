@@ -14,6 +14,7 @@ import streamlit as st
 
 from modules import admin_auth
 from modules.config_loader import TestConfig
+from modules.envio import ConfigCorreo, enviar_pendientes, pendientes_de_envio
 from modules.panel import PanelDatos, cargar_panel, lista_de_alumnos, reiniciar, sincronizar_resultados
 from modules.qr_utils import UrlInvalida, qr_png, validar_url
 from modules.reports import excel_individual, pdf_individual
@@ -112,12 +113,62 @@ POR_PAGINA = 20
 _TONO = {"terminado": "alto", "en_curso": "medio", "sin_registrar": "bajo"}
 
 
-def _pestana_avance(repo, tests: Sequence[TestConfig], panel: PanelDatos) -> None:
+def _estado_reporte(alumno) -> str:
+    """Texto breve del envío del reporte por correo; vacío para quien aún no termina."""
+    if alumno is None or alumno.estado != "terminado":
+        return ""
+    if not alumno.correo:
+        return "Sin correo"
+    return {"enviado": "Reporte enviado", "enviando": "Enviando reporte…", "pendiente": "Reporte pendiente",
+            "error": f"Reporte con error: {alumno.reporte_error or 'sin detalle'}"}.get(alumno.reporte_estado, "")
+
+
+@st.dialog("Enviar reportes pendientes", width="medium")
+def _dialogo_envio(repo, panel: PanelDatos, correo: ConfigCorreo) -> None:
+    n = len(pendientes_de_envio(panel.filas))
+    st.write(f"Se enviarán {n} reporte{'' if n == 1 else 's'} por correo a quienes terminaron y aún no lo reciben. "
+             "¿Continuar?")
+    c1, c2 = st.columns(2)
+    if c1.button("Cancelar", width="stretch", key="cancelar_envio"):
+        st.rerun()
+    if c2.button("Enviar", type="primary", width="stretch", key="confirmar_envio"):
+        try:
+            enviados, errores, omitidos = enviar_pendientes(
+                repo, panel.tests, panel.filas, correo, st.session_state.get("panel_en") or datetime.now(ZONA))
+        except Exception:
+            log.exception("No se pudieron enviar los reportes pendientes")
+            st.error("No se pudo completar el envío. Intenta de nuevo.")
+            return
+        resumen = f"Enviados: {enviados} · Con error: {errores} · Omitidos: {omitidos}"
+        st.session_state["admin_alerta" if errores else "admin_aviso"] = resumen
+        st.session_state.pop("panel", None)
+        st.rerun()
+
+
+def _bloque_envio(repo, panel: PanelDatos, correo: ConfigCorreo | None) -> None:
+    pendientes = pendientes_de_envio(panel.filas)
+    if correo is None:
+        razon = "Falta configurar la sección [correo] en los secretos de la app."
+    elif not pendientes:
+        razon = "No hay reportes pendientes."
+    else:
+        razon = ""
+    c1, c2 = st.columns([2, 3], vertical_alignment="center")
+    if c1.button("Enviar reportes pendientes", key="enviar_pendientes", icon=":material/mail:",
+                 width="stretch", disabled=bool(razon)):
+        _dialogo_envio(repo, panel, correo)
+    c2.caption(razon or f"{len(pendientes)} por enviar.")
+
+
+def _pestana_avance(repo, tests: Sequence[TestConfig], panel: PanelDatos, correo: ConfigCorreo | None = None) -> None:
     if aviso := st.session_state.pop("admin_aviso", None):
         st.success(aviso)
+    if alerta := st.session_state.pop("admin_alerta", None):
+        st.warning(alerta)
     st.caption(f"Datos cargados a las {st.session_state['panel_en'].strftime('%H:%M')}. "
                "Pulsa «Actualizar datos» para ver lo más reciente.")
     tema.frase_avance(len(panel.filas), panel.terminados, len(panel.filas) - panel.terminados)
+    _bloque_envio(repo, panel, correo)
     for aviso in panel.problemas:
         st.warning(aviso)
     lista = lista_de_alumnos(panel)
@@ -144,6 +195,7 @@ def _pestana_avance(repo, tests: Sequence[TestConfig], panel: PanelDatos) -> Non
             estado = a.estado if a else "sin_registrar"
             nota = "Fuera de la lista" if panel.autorizados and not item.en_lista else \
                 item.estatus.capitalize() if item.estatus == "IRREGULAR" else ""
+            nota = " · ".join(x for x in (nota, _estado_reporte(a)) if x)
             with st.container(key=f"fila_{item.matricula}"):
                 izq, centro, der = st.columns(anchos, vertical_alignment="center")
                 with izq:
@@ -282,7 +334,8 @@ def _pestana_qr(url_publica: str | None) -> None:
     st.caption("Antes de imprimir, pruébalo con el celular (iPhone y Android).")
 
 
-def render(repo, tests: Sequence[TestConfig], esperada: object, cliente_ip: str, url_publica: str | None) -> None:
+def render(repo, tests: Sequence[TestConfig], esperada: object, cliente_ip: str, url_publica: str | None,
+           correo: ConfigCorreo | None = None) -> None:
     tema.aplicar()
     if not _sesion_activa():
         _login(repo, esperada, cliente_ip)
@@ -305,7 +358,7 @@ def render(repo, tests: Sequence[TestConfig], esperada: object, cliente_ip: str,
         return
     avance, descargas, qr = st.tabs(["Alumnos", "Descargas", "Código QR"])
     with avance:
-        _pestana_avance(repo, tests, panel)
+        _pestana_avance(repo, tests, panel, correo)
     with descargas:
         _pestana_descargas(repo, panel)
     with qr:

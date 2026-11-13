@@ -3,16 +3,18 @@ import pytest
 from modules import security as sec
 
 
+CORREO = dict(correo="ana@mail.com", correo_confirmacion="ana@mail.com")
 BASE = dict(apellido_paterno="Pérez", apellido_materno="López", nombres="Ana María",
-            matricula="123456", edad=20, tutor="Mtro. Juan Ruiz", semestre=5)
+            matricula="123456", edad=20, tutor="Mtro. Juan Ruiz", semestre=5, **CORREO)
 
 
 def test_datos_validos_se_normalizan():
     v, e = sec.validar_datos("  Pérez ", "López  ", " Ana   María ", " 123456 ", 20,
-                             "  Mtro.  Juan Ruiz ", 5)
+                             "  Mtro.  Juan Ruiz ", 5, **CORREO)
     assert e == {}
     assert v == {"apellido_paterno": "Pérez", "apellido_materno": "López", "nombres": "Ana María",
-                 "matricula": "123456", "edad": 20, "tutor": "Mtro. Juan Ruiz", "semestre": 5}
+                 "matricula": "123456", "edad": 20, "tutor": "Mtro. Juan Ruiz", "semestre": 5,
+                 "correo": "ana@mail.com"}
 
 
 @pytest.mark.parametrize("campo,valor", [
@@ -41,12 +43,12 @@ def test_clave_cliente_no_guarda_la_ip():
 
 
 def test_los_caracteres_de_control_se_eliminan_antes_de_validar():
-    v, e = sec.validar_datos("Pérez", "López", "Ana\x01 Mar\x1bía\x08", "123456", 20, "Mtro.\x07 Ruiz", 5)
+    v, e = sec.validar_datos("Pérez", "López", "Ana\x01 Mar\x1bía\x08", "123456", 20, "Mtro.\x07 Ruiz", 5, **CORREO)
     assert e == {} and v["nombres"] == "Ana María" and v["tutor"] == "Mtro. Ruiz"
 
 
 def test_un_nombre_solo_de_control_es_invalido():
-    _, e = sec.validar_datos("\x01\x02", "López", "Ana", "123456", 20, "Tutor X", 5)
+    _, e = sec.validar_datos("\x01\x02", "López", "Ana", "123456", 20, "Tutor X", 5, **CORREO)
     assert "apellido_paterno" in e
 
 
@@ -63,10 +65,29 @@ def test_normalizar_texto_quita_caracteres_no_validos(sucio, limpio):
 
 
 def test_un_nombre_con_no_caracteres_se_guarda_limpio():
-    v, e = sec.validar_datos("Pérez\ufffe", "López", "Ana\uffff", "123456", 20, "Mtro. \ufffeRuiz", 5)
+    v, e = sec.validar_datos("Pérez\ufffe", "López", "Ana\uffff", "123456", 20, "Mtro. \ufffeRuiz", 5, **CORREO)
     assert e == {} and (v["apellido_paterno"], v["nombres"], v["tutor"]) == ("Pérez", "Ana", "Mtro. Ruiz")
 
 
 def test_matricula_de_5_digitos_es_valida():
-    v, errores = sec.validar_datos("Pérez", "López", "Ana", " 38974 ", 20, "Mtro. Juan Ruiz", 5)
+    v, errores = sec.validar_datos("Pérez", "López", "Ana", " 38974 ", 20, "Mtro. Juan Ruiz", 5, **CORREO)
     assert not errores and v["matricula"] == "38974"
+
+
+def test_correo_valido_se_normaliza():
+    v, e = sec.validar_datos(**{**BASE, "correo": "  Ana@Mail.COM ", "correo_confirmacion": "ana@mail.com"})
+    assert e == {} and v["correo"] == "ana@mail.com"
+
+
+@pytest.mark.parametrize("correo", [
+    "", "sin-arroba", "a@b", "a b@c.com", "a@c.com\nBcc: x@y.com", "a@c.com\r\nX: y", "@c.com",
+    "a" * 250 + "@c.com",
+])
+def test_correo_invalido_da_error(correo):
+    _, e = sec.validar_datos(**{**BASE, "correo": correo, "correo_confirmacion": correo})
+    assert list(e) == ["correo"]
+
+
+def test_confirmacion_distinta_da_error():
+    _, e = sec.validar_datos(**{**BASE, "correo": "a@c.com", "correo_confirmacion": "b@c.com"})
+    assert e == {"correo": "Los correos no coinciden."}

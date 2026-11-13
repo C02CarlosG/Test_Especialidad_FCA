@@ -36,7 +36,7 @@ Los datos que se generan y recaban mediante la interacción con la herramienta s
 1. Brindar una mejor orientación y resolver las consultas académicas de las personas usuarias, con la posibilidad de personalizar la experiencia mediante el uso de un nombre o número de matrícula.
 2. Realizar mejoras en la calidad y precisión de “Evaluación Integral de Personalidad y Vocación de Campos Formativos”, optimizando su desempeño con base en el análisis de las interacciones.
 3. Generar estadísticas y reportes para medir el uso y efectividad del servicio, sin identificar a personas usuarias de manera individual ni asociar las interacciones a datos que permitan su identificación.
-4. Generar Reporte de Evaluación Integral.
+4. Generar el Reporte de Evaluación Integral y enviarlo en formato PDF al correo electrónico que la persona usuaria proporcione al registrarse.
 
 **Mecanismo para la negativa de finalidades:** Si la persona titular no desea que sus datos sean tratados para las finalidades secundarias, podrá manifestarlo desde su ingreso o mediante correo dirigido a la Unidad de Transparencia (transparencia@uabjo.mx), sin que ello condicione el acceso a la herramienta.
 
@@ -45,6 +45,7 @@ Los datos que se generan y recaban mediante la interacción con la herramienta s
 Las categorías de datos personales que puede recabar el personal de la Coordinación de Tutorías y /o el Cuerpo Académico “Gestión e Innovación de las Organizaciones” para el tratamiento en la herramienta tecnológica de acompañamiento denominada “Evaluación Integral de Personalidad y Vocación de Campos Formativos”, son los siguientes:
 
 - **Datos personales de identificación:** Nombre y apellidos.
+- **Datos personales de contacto:** Correo electrónico, que se utiliza únicamente para enviar a la persona usuaria su Reporte de Evaluación Integral y se conserva junto con el resto de sus datos.
 - **Datos personales académicos:** Número de matrícula, licenciatura y semestre educativo en curso
 - **Interacciones conversacionales:** Registro de los textos enviados durante las consultas.
 - **Exclusión de datos sensibles y audio:** No se recaban ni tratan datos personales sensibles, asi mismo en ningún caso se almacenarán registros de voz en formato de audio.
